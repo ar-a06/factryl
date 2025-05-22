@@ -33,7 +33,7 @@ ENV/
 
 # Environment variables
 .env
-config/secrets.env
+config/secrets.yaml
 
 # Data
 data/raw/*
