@@ -5,7 +5,7 @@ Integration tests for the news scraper module.
 import pytest
 from pathlib import Path
 from datetime import datetime
-from app.scraper import NewsScraper
+from app.scraper.news import NewsScraper
 
 @pytest.fixture
 def test_dirs(tmp_path):
@@ -25,25 +25,85 @@ def test_dirs(tmp_path):
         'reports': reports_dir
     }
 
-@pytest.fixture
-async def scraper():
-    """Fixture to create and cleanup a news scraper instance."""
-    config = {
-        'cache': {
-            'enabled': False,
-            'host': 'localhost',
-            'port': 6379
-        },
-        'scraping': {
-            'max_total_articles': 10,  # Reduced for testing
-            'min_credibility_score': 85,
-            'default_timeout': 10
-        }
-    }
+@pytest.mark.asyncio
+class TestNewsScraper:
+    """Integration tests for the news scraper."""
     
-    scraper = NewsScraper(config)
-    yield scraper
-    await scraper.close()
+    @pytest.fixture
+    async def news_scraper(self, base_config):
+        """Create a news scraper instance."""
+        scraper = NewsScraper(base_config)
+        yield scraper
+        await scraper.close()
+    
+    async def test_scrape_with_valid_query(self, news_scraper, test_queries):
+        """Test scraping with valid queries."""
+        for query in test_queries:
+            results = await news_scraper.scrape(query)
+            assert isinstance(results, list)
+            if results:  # If we got any results
+                for article in results:
+                    # Verify required fields
+                    assert 'title' in article
+                    assert 'url' in article
+                    assert 'content' in article
+                    assert 'source' in article
+                    assert 'source_detail' in article
+                    assert 'credibility_info' in article
+                    
+                    # Verify credibility info
+                    cred_info = article['credibility_info']
+                    assert 'score' in cred_info
+                    assert 'bias' in cred_info
+                    assert 'category' in cred_info
+                    
+                    # Verify metadata
+                    assert 'metadata' in article
+                    metadata = article['metadata']
+                    assert 'preview' in metadata
+                    assert 'language' in metadata
+                    assert 'scraped_at' in metadata
+    
+    async def test_scrape_with_empty_query(self, news_scraper):
+        """Test scraping with empty query."""
+        results = await news_scraper.scrape("")
+        assert isinstance(results, list)
+        assert len(results) == 0
+    
+    async def test_scrape_with_invalid_query(self, news_scraper):
+        """Test scraping with invalid query."""
+        results = await news_scraper.scrape("thisisaverylongquerythatwontmatchanything12345")
+        assert isinstance(results, list)
+        assert len(results) == 0
+    
+    async def test_source_credibility_filtering(self, news_scraper, base_config):
+        """Test that sources below minimum credibility score are filtered out."""
+        # Create a new scraper with high minimum credibility
+        high_cred_config = base_config.copy()
+        high_cred_config['scraping']['min_credibility_score'] = 95
+        
+        scraper = NewsScraper(high_cred_config)
+        try:
+            results = await scraper.scrape("test query")
+            
+            # Verify all returned articles meet minimum credibility
+            for article in results:
+                assert article['credibility_info']['score'] >= 95
+        finally:
+            await scraper.close()
+    
+    async def test_max_articles_limit(self, news_scraper, base_config):
+        """Test that max_total_articles limit is respected."""
+        # Create a new scraper with low article limit
+        limited_config = base_config.copy()
+        limited_config['scraping']['max_total_articles'] = 2
+        
+        scraper = NewsScraper(limited_config)
+        try:
+            results = await scraper.scrape("artificial intelligence")
+            assert len(results) <= 2
+        finally:
+            await scraper.close()
 
 @pytest.mark.asyncio
 async def test_news_scraper_search(scraper, test_dirs):
@@ -93,13 +153,6 @@ async def test_news_scraper_credibility(scraper):
         score = article['credibility_info']['score']
         assert score >= min_score, f"Article credibility ({score}) should meet minimum requirement ({min_score})"
         assert 'bias' in article['credibility_info'], "Article should have bias rating"
-
-@pytest.mark.asyncio
-async def test_news_scraper_empty_query(scraper):
-    """Test that the scraper handles empty queries gracefully."""
-    results = await scraper.scrape("")
-    assert isinstance(results, list), "Should return empty list for empty query"
-    assert len(results) == 0, "Should not find results for empty query"
 
 @pytest.mark.asyncio
 async def test_save_results(scraper, test_dirs):

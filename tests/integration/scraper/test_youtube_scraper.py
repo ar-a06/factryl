@@ -1,5 +1,5 @@
 """
-Test script for blog scraper functionality.
+Test script for YouTube scraper functionality.
 """
 
 import asyncio
@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 from loguru import logger
-from app.scraper.blog import BlogScraper
+from app.scraper.media.youtube import YouTubeScraper
 from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader
 import statistics
@@ -38,8 +38,8 @@ async def generate_report(results, query, time_filter):
     
     # Render template
     html_content = template.render(
-        source_name="Blog",
-        source_color="#1B1B1B",
+        source_name="YouTube",
+        source_color="#FF0000",
         query=query,
         results=results,
         time_filter=time_filter,
@@ -47,11 +47,11 @@ async def generate_report(results, query, time_filter):
         timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     )
     
-    # Save report in the scraper directory
+    # Save report in the new scraper directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_dir = Path('output/reports/scraper/blog')
+    report_dir = Path('output/reports/scraper/youtube')
     report_dir.mkdir(parents=True, exist_ok=True)
-    report_path = report_dir / f"blog_report_{timestamp}.html"
+    report_path = report_dir / f"youtube_report_{timestamp}.html"
     
     with open(report_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
@@ -69,16 +69,16 @@ async def main():
     try:
         with open(config_path, 'r') as f:
             full_config = json.load(f)
-            # Extract blog-specific config
+            # Extract YouTube-specific config
             config = {
                 "scrapers": {
-                    "blog": full_config["scrapers"]["blog"]
+                    "youtube": full_config["scrapers"]["youtube"]
                 },
                 "cache": full_config["cache"],
                 "reporting": full_config["reporting"]
             }
             logger.debug(f"Loaded config from {config_path}")
-            logger.debug(f"Blog config: {json.dumps(config['scrapers']['blog'], indent=2)}")
+            logger.debug(f"YouTube config: {json.dumps(config['scrapers']['youtube'], indent=2)}")
     except FileNotFoundError:
         logger.error(f"Error: Configuration file not found at {config_path}")
         return
@@ -86,30 +86,30 @@ async def main():
         logger.error(f"Error: Invalid JSON in configuration file {config_path}")
         return
     
-    # Load API keys from environment variables
+    # Load API key from environment variable
     load_dotenv()
     
     # Initialize scraper
-    scraper = BlogScraper(config)
+    scraper = YouTubeScraper(config)
     
     try:
         # Validate configuration
-        logger.info("Validating blog scraper configuration...")
+        logger.info("Validating YouTube API configuration...")
         is_valid = await scraper.validate()
         if not is_valid:
-            logger.error("Scraper validation failed. Please check your API keys.")
+            logger.error("Scraper validation failed. Please check your API key.")
             return
             
         # Test search queries
         queries = [
-            "artificial intelligence ethics",
-            "sustainable technology trends",
-            "future of remote work"
+            "artificial intelligence latest developments",
+            "climate change solutions 2024",
+            "breaking news technology"
         ]
         
         all_results = []
         for query in queries:
-            logger.info(f"\nSearching blogs for: {query}")
+            logger.info(f"\nSearching YouTube for: {query}")
             print("-" * 50)
             
             results = await scraper.scrape(query)
@@ -119,12 +119,11 @@ async def main():
             for i, result in enumerate(results, 1):
                 print(f"Result {i}:")
                 print(f"Title: {result['title']}")
-                print(f"Author: {result['author_name']}")
-                print(f"Platform: {result['source']}")
-                print(f"Word Count: {result['metadata']['word_count']:,}")
+                print(f"Channel: {result['channel_name']}")
+                print(f"Duration: {result['duration']}")
+                print(f"Views: {result['metadata']['views']:,}")
                 print(f"Likes: {result['metadata']['likes']:,}")
                 print(f"Comments: {result['metadata']['comments']:,}")
-                print(f"Shares: {result['metadata']['shares']:,}")
                 print(f"Credibility Score: {result['credibility_info']['score']:.1f}")
                 print(f"URL: {result['url']}")
                 print("-" * 30)
@@ -133,7 +132,7 @@ async def main():
         report_path = await generate_report(
             all_results,
             "Multiple Queries: " + ", ".join(queries),
-            config['scrapers']['blog']['time_filter']
+            config['scrapers']['youtube']['time_filter']
         )
             
     except Exception as e:

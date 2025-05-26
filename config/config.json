@@ -11,7 +11,11 @@
             "region_code": "US",
             "safe_search": "moderate",
             "rate_limit": 3,
-            "source_color": "#FF0000"
+            "source_color": "#FF0000",
+            "enabled": true,
+            "time_filter": "7d",
+            "max_results": 50,
+            "credibility_threshold": 85
         },
         "blog": {
             "max_results": 10,
@@ -25,7 +29,11 @@
             "wordpress_client_id": "",
             "wordpress_client_secret": "",
             "wordpress_api_key": "",
-            "medium_api_key": ""
+            "medium_api_key": "",
+            "enabled": true,
+            "time_filter": "7d",
+            "max_results": 50,
+            "credibility_threshold": 85
         },
         "twitter": {
             "max_results": 100,
@@ -50,6 +58,52 @@
             "time_filter": "week",
             "min_credibility": 60,
             "rate_limit": 1
+        },
+        "weather": {
+            "providers": ["openweathermap", "weatherapi", "noaa"],
+            "max_results": 10,
+            "update_interval": 1800,
+            "units": "metric",
+            "rate_limit": 2,
+            "source_color": "#00B4DB",
+            "endpoints": {
+                "openweathermap": "https://api.openweathermap.org/data/2.5",
+                "weatherapi": "https://api.weatherapi.com/v1",
+                "noaa": "https://api.weather.gov"
+            },
+            "features": ["current", "forecast", "alerts", "air_quality"]
+        },
+        "news": {
+            "enabled": true,
+            "time_filter": "24h",
+            "max_results": 100,
+            "credibility_threshold": 85
+        },
+        "forum": {
+            "enabled": true,
+            "time_filter": "7d",
+            "max_results": 100,
+            "credibility_threshold": 85,
+            "sources": {
+                "stackoverflow": {
+                    "enabled": true,
+                    "tags": ["python", "javascript", "java", "c#", "php", "html", "css", "react", "node.js"],
+                    "max_per_tag": 10
+                },
+                "devto": {
+                    "enabled": true,
+                    "tags": ["javascript", "python", "webdev", "programming"],
+                    "max_results": 25
+                },
+                "producthunt": {
+                    "enabled": true,
+                    "max_results": 20
+                },
+                "indiehackers": {
+                    "enabled": true,
+                    "max_results": 20
+                }
+            }
         }
     },
     "cache": {
@@ -57,7 +111,13 @@
         "type": "redis",
         "ttl": 3600,
         "max_size": 1000,
-        "location": "./cache"
+        "location": "./cache",
+        "backend": "redis",
+        "redis": {
+            "host": "localhost",
+            "port": 6379,
+            "db": 0
+        }
     },
     "reporting": {
         "template_path": "app/scraper/templates/report_template.html",
@@ -66,7 +126,9 @@
         "available_formats": ["markdown", "pdf", "json"],
         "max_summary_length": 500,
         "include_sources": true,
-        "include_metrics": true
+        "include_metrics": true,
+        "template_dir": "app/scraper/templates",
+        "cleanup_older_than": "7d"
     },
     "analysis": {
         "relevance": {

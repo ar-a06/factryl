@@ -82,6 +82,14 @@
         </div>
 
         <!-- Articles by Category -->
+        {% if total_articles == 0 %}
+        <div class="bg-white shadow sm:rounded-lg mb-6">
+            <div class="px-4 py-5 sm:px-6 text-center">
+                <h2 class="text-lg leading-6 font-medium text-gray-900">No results found</h2>
+                <p class="mt-2 text-sm text-gray-500">No articles were found for your search query.</p>
+            </div>
+        </div>
+        {% else %}
         {% for category, articles in categories.items() %}
         <div class="bg-white shadow sm:rounded-lg mb-6">
             <div class="px-4 py-5 sm:px-6">
@@ -120,6 +128,7 @@
             </div>
         </div>
         {% endfor %}
+        {% endif %}
     </main>
 
     <!-- Footer -->

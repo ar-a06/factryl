@@ -13,7 +13,7 @@ import redis.asyncio as redis
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .plugin_loader import BaseScraper, rate_limited
+from ..plugin_loader import BaseScraper, rate_limited
 
 class TwitterScraper(BaseScraper):
     """Twitter scraper implementation using web interface."""
