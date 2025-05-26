@@ -24,15 +24,27 @@ wheels/
 venv/
 env/
 ENV/
+.env
+.venv
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+
+# Project specific
+cache/
+reports/
+logs/
+*.log
+
+# Temp files
+.DS_Store
+Thumbs.db
 
 # Environment variables
-.env
 config/secrets.yaml
 
 # Data
@@ -40,10 +52,6 @@ data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
-
-# Logs
-*.log
-logs/
 
 # Test coverage
 .coverage

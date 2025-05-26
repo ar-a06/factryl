@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ source_name | title }} News Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: var(--header-color, #2196F3);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .content-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .content-card:hover {
+            transform: translateY(-5px);
+        }
+        .thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        .content-info {
+            padding: 15px;
+        }
+        .content-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .source-name {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .metadata {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        .credibility {
+            margin-top: 10px;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .credibility-score {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .summary {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .timestamp {
+            text-align: right;
+            color: #666;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            margin: 2px;
+            border-radius: 12px;
+            background-color: #e9ecef;
+            color: #495057;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header" style="--header-color: {{ source_color }};">
+        <h1>{{ source_name | title }} News Report</h1>
+        <p>Search Query: {{ query }}</p>
+    </div>
+
+    <div class="summary">
+        <h2>Summary</h2>
+        <p>Total items found: {{ results|length }}</p>
+        <p>Time period: Last {{ time_filter }}</p>
+        <p>Average credibility score: {{ avg_credibility|round(1) }}</p>
+        {% if summary_text %}
+        <p>{{ summary_text }}</p>
+        {% endif %}
+    </div>
+
+    <div class="content-grid">
+        {% for item in results %}
+        <div class="content-card">
+            {% if item.thumbnail %}
+            <img src="{{ item.thumbnail }}" alt="{{ item.title }}" class="thumbnail">
+            {% endif %}
+            <div class="content-info">
+                <div class="content-title">
+                    <a href="{{ item.url }}" target="_blank">{{ item.title }}</a>
+                </div>
+                <div class="source-name">
+                    {% if item.source_detail %}
+                    {{ item.source_detail }}
+                    {% else %}
+                    {{ item.source }}
+                    {% endif %}
+                </div>
+                {% if item.metadata %}
+                <div class="metadata">
+                    {% for key, value in item.metadata.items() %}
+                    <span>{{ key }}: {{ value|format_number if value is number else value }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if item.tags %}
+                <div class="tags">
+                    {% for tag in item.tags %}
+                    <span class="tag">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if item.credibility_info %}
+                <div class="credibility">
+                    <div>Credibility Score: <span class="credibility-score">{{ item.credibility_info.score|round(1) }}</span></div>
+                    {% if item.credibility_info.category %}
+                    <div>Category: {{ item.credibility_info.category }}</div>
+                    {% endif %}
+                    {% if item.credibility_info.bias %}
+                    <div>Bias: {{ item.credibility_info.bias }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="timestamp">
+        Report generated on: {{ timestamp }}
+    </div>
+</body>
+</html> 
