@@ -74,7 +74,7 @@ User Query → Multi-Source Scrapers → Content Combiner → Deduplicator → A
 
 1. **Clone and setup**:
 ```bash
-git clone <repository-url>
+git clone https://github.com/ar-a06/factryl.git
 cd factryl
 ```
 
