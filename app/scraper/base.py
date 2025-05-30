@@ -148,7 +148,7 @@ class RSSBasedScraper(WebBasedScraper):
                     processed_entry = self.process_entry(entry)
                     if processed_entry:
                         # Filter by query if provided
-                        if not query or self._matches_query(processed_entry, query):
+                        if not query or self._matches_query(processed_entry, query, len(results)):
                             results.append(processed_entry)
                             
             except Exception as e:
@@ -172,8 +172,20 @@ class RSSBasedScraper(WebBasedScraper):
             logger.error(f"Error processing RSS entry: {e}")
             return None
             
-    def _matches_query(self, entry: Dict[str, Any], query: str) -> bool:
-        """Check if entry matches the query."""
+    def _matches_query(self, entry: Dict[str, Any], query: str, current_results_count: int = 0) -> bool:
+        """Check if entry matches the query with relaxed matching."""
+        if not query:
+            return True
+            
         query_lower = query.lower()
-        searchable_text = f"{entry.get('title', '')} {entry.get('summary', '')}".lower()
-        return query_lower in searchable_text
+        searchable_text = f"{entry.get('title', '')} {entry.get('content', '')} {entry.get('summary', '')}".lower()
+        
+        # Relaxed matching - check for any word in the query
+        query_words = query_lower.split()
+        for word in query_words:
+            if len(word) > 2 and word in searchable_text:
+                return True
+                
+        # If no individual words match, still include some content for diversity
+        # This ensures we get recent news even if not directly related
+        return current_results_count < 3  # Include first few articles regardless

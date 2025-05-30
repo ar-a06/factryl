@@ -1,10 +1,13 @@
 """
-Aggregator module for combining and processing scraped content.
+Aggregator module for combining, deduplicating, and scoring content.
 """
 
 from typing import List, Dict, Any
 import hashlib
 from difflib import SequenceMatcher
+from .combiner import ContentCombiner
+from .deduplicator import Deduplicator
+from .scorer import ContentScorer
 
 
 class NewsAggregator:
@@ -76,4 +79,8 @@ class NewsAggregator:
         return processed_articles
 
 
-__all__ = ['NewsAggregator']
+__all__ = [
+    'ContentCombiner',
+    'Deduplicator',
+    'ContentScorer'
+]

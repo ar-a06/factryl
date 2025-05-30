@@ -1,4 +1,10 @@
+# ==========================================
+# Factryl Project - Git Ignore Rules
+# ==========================================
+
+# ==========================================
 # Python
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -16,48 +22,188 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Virtual Environment
+# ==========================================
+# Virtual Environments
+# ==========================================
 venv/
 env/
 ENV/
 .env
 .venv
+.ENV
+.env.local
+.env.*.local
+env.bak/
+venv.bak/
 
-# IDE
+# ==========================================
+# IDEs & Editors
+# ==========================================
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+.spyderproject
+.spyproject
+.rope_project/
+*.sublime-project
+*.sublime-workspace
 
-# Project specific
-cache/
-reports/
+# ==========================================
+# Operating System Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+# Flask Specific
+# ==========================================
+instance/
+.webassets-cache
+.flask_session/
+
+# ==========================================
+# Environment & Config
+# ==========================================
+.env
+.env.*
+config/secrets.yaml
+config/secrets.yml
+config/local_config.py
+*.key
+*.pem
+*.p12
+
+# ==========================================
+# Logs & Temporary Files
+# ==========================================
 logs/
 *.log
+*.log.*
+log.txt
+*.tmp
+*.temp
+cache/
+.cache/
+reports/
 
-# Temp files
-.DS_Store
-Thumbs.db
+# ==========================================
+# Database Files
+# ==========================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
 
-# Environment variables
-config/secrets.yaml
+# ==========================================
+# AI/ML & Data Files
+# ==========================================
+models/
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.model
+*.pt
+*.pth
+*.onnx
+.transformers_cache/
+.huggingface/
 
-# Data
+# ==========================================
+# Data Directories
+# ==========================================
 data/raw/*
 data/processed/*
+data/cache/*
+data/temp/*
+data/downloads/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!data/cache/.gitkeep
 
-# Test coverage
+# ==========================================
+# Output & Generated Files
+# ==========================================
+output/
+results/
+exports/
+screenshots/
+*.html
+*.pdf
+*.docx
+!templates/*.html
+!static/*.html
+
+# ==========================================
+# Testing & Coverage
+# ==========================================
 .coverage
+.coverage.*
 htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+pytestdebug.log
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
 
-# Distribution
-dist/
-build/
-*.spec 
+# ==========================================
+# Package & Distribution
+# ==========================================
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+*.spec
+
+# ==========================================
+# Jupyter Notebooks
+# ==========================================
+.ipynb_checkpoints/
+*.ipynb
+
+# ==========================================
+# Documentation
+# ==========================================
+docs/_build/
+site/
+.readthedocs.yml
+
+# ==========================================
+# Selenium & Browser Automation
+# ==========================================
+chromedriver*
+geckodriver*
+msedgedriver*
+selenium-debug.log
+
+# ==========================================
+# Redis & Caching
+# ==========================================
+dump.rdb
+*.rdb
+
+# ==========================================
+# Project Specific
+# ==========================================
+search_analytics.json
+user_sessions/
+temp_downloads/
+.scrapy/ 

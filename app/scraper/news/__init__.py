@@ -4,6 +4,8 @@ Includes support for major tech news, business news, specialized tech publicatio
 sports news, education news, entertainment news, politics news, and economics news.
 """
 
+from .bbc_news import BBCNewsScraper
+from .techcrunch import TechCrunchScraper
 from .tech_news import TechNewsScraper
 from .business_news import BusinessNewsScraper
 from .tech_publications import TechPublicationsScraper
@@ -13,8 +15,11 @@ from .entertainment_news import EntertainmentNewsScraper
 from .politics_news import PoliticsNewsScraper
 from .economics_news import EconomicsNewsScraper
 from .base import NewsScraper
+from .google_news import GoogleNewsScraper
 
 __all__ = [
+    'BBCNewsScraper',
+    'TechCrunchScraper',
     'TechNewsScraper',
     'BusinessNewsScraper',
     'TechPublicationsScraper',
@@ -22,5 +27,6 @@ __all__ = [
     'EducationNewsScraper',
     'EntertainmentNewsScraper',
     'PoliticsNewsScraper',
-    'EconomicsNewsScraper'
+    'EconomicsNewsScraper',
+    'GoogleNewsScraper'
 ] 
