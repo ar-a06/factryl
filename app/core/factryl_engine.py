@@ -34,6 +34,27 @@ try:
 except ImportError:
     LLM_AVAILABLE = False
 
+# Ollama LLM Integration
+try:
+    from .ollama_analyzer import OllamaAnalyzer
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
+
+# Article Content Extraction
+try:
+    from .article_extractor import ArticleExtractor
+    ARTICLE_EXTRACTOR_AVAILABLE = True
+except ImportError:
+    ARTICLE_EXTRACTOR_AVAILABLE = False
+
+# Smart Source Management
+try:
+    from .smart_source_manager import SmartSourceManager
+    SMART_SOURCE_MANAGER_AVAILABLE = True
+except ImportError:
+    SMART_SOURCE_MANAGER_AVAILABLE = False
+
 # Import all working scrapers directly
 try:
     from ..scraper.news.bbc_news import BBCNewsScraper
@@ -130,6 +151,52 @@ class FactrylEngine:
         # Initialize AI components if available
         self.ai_analyzer = AIAnalyzer() if AI_AVAILABLE else None
         self.llm_analyzer = LLMAnalyzer() if LLM_AVAILABLE else None
+        
+        # Initialize Ollama LLM analyzer
+        self.ollama_analyzer = None
+        if OLLAMA_AVAILABLE:
+            try:
+                self.ollama_analyzer = OllamaAnalyzer()
+                if self.ollama_analyzer.is_service_available():
+                    print("Ollama LLM integration active - Real AI summarization enabled")
+                else:
+                    print("Ollama service unavailable - Using fallback summarization")
+            except Exception as e:
+                print(f"Ollama initialization failed: {e}")
+                self.ollama_analyzer = None
+        else:
+            print("Ollama not available - Install with: pip install ollama")
+        
+        # Initialize Article Extractor
+        self.article_extractor = None
+        if ARTICLE_EXTRACTOR_AVAILABLE:
+            try:
+                extractor_config = config.get('article_extractor', {
+                    'enable_caching': True,
+                    'cache_ttl': 3600,
+                    'max_content_length': 3000,
+                    'extraction_timeout': 8
+                })
+                self.article_extractor = ArticleExtractor(extractor_config)
+                print("Article content extraction enabled - Full article content available")
+            except Exception as e:
+                print(f"Article extractor initialization failed: {e}")
+                self.article_extractor = None
+        else:
+            print("Article extractor not available")
+        
+        # Initialize Smart Source Manager
+        self.source_manager = None
+        if SMART_SOURCE_MANAGER_AVAILABLE:
+            try:
+                source_config = config.get('source_manager', {})
+                self.source_manager = SmartSourceManager(source_config)
+                print("Smart source management enabled - Optimal LLM content prioritization")
+            except Exception as e:
+                print(f"Smart source manager initialization failed: {e}")
+                self.source_manager = None
+        else:
+            print("Smart source manager not available")
         
         # Initialize scrapers
         self.scrapers = {}
@@ -248,7 +315,7 @@ class FactrylEngine:
                 for result in results:
                     result['source'] = name
                     result['source_type'] = cred_info['type']
-                    result['credibility_score'] = cred_info['score']
+                    result['credibility_score'] = round(cred_info['score'] * 100, 1)  # Convert 0.0-1.0 to 0-100 scale
                     result['bias_rating'] = cred_info['bias']
                     result['source_category'] = cred_info['category']
                 return results
@@ -269,6 +336,19 @@ class FactrylEngine:
         for results in all_results:
             combined_results.extend(results)
         
+        # Enhance articles with full content extraction if available
+        if self.article_extractor and combined_results:
+            try:
+                print(f"Enhancing {len(combined_results)} articles with content extraction...")
+                enhanced_results = await self.article_extractor.enhance_articles_batch(
+                    combined_results, 
+                    max_concurrent=3
+                )
+                combined_results = enhanced_results
+                print(f"Content enhancement completed for {len(enhanced_results)} articles")
+            except Exception as e:
+                print(f"Content enhancement failed: {e}, continuing with original content")
+        
         # Deduplicate results
         unique_results = self.deduplicator.deduplicate(combined_results)
         
@@ -283,9 +363,12 @@ class FactrylEngine:
             sentiment_score = await self.sentiment_analyzer.analyze(result.get('content', ''))
             result['sentiment_score'] = sentiment_score
             
-            # Get credibility score from database
+            # Get credibility score from database - convert to 0-100 scale for display
             cred_info = self.get_source_credibility(result['source'])
-            result['credibility_score'] = cred_info['score']
+            raw_credibility = cred_info['score']  # This is 0.0-1.0 range
+            result['credibility_score'] = round(raw_credibility * 100, 1)  # Convert to 0-100 scale
+            
+            print(f"Debug - Article: {result.get('title', 'No title')[:50]}... Source: {result['source']} Raw Cred: {raw_credibility} Scaled Cred: {result['credibility_score']}")
             
             # Calculate composite score
             score_dict = self.scorer.calculate_score(result)
@@ -313,7 +396,8 @@ class FactrylEngine:
                 'sources_searched': sources_searched,
                 'successful_sources': successful_sources,
                 'processing_time': processing_time,
-                'credibility_score': sum(r['credibility_score'] for r in final_results) / len(final_results) if final_results else 0
+                'credibility_score': sum(r['credibility_score'] for r in final_results) / len(final_results) if final_results else 0,
+                'content_enhanced_articles': len([r for r in final_results if r.get('metadata', {}).get('content_enhanced')]) if final_results else 0
             },
             'timestamp': datetime.utcnow().isoformat()
         }
@@ -360,9 +444,24 @@ class FactrylEngine:
                 except Exception as e:
                     print(f"Dictionary lookup failed: {e}")
             
-            # Try to use LLM analyzer if available
-            if self.llm_analyzer:
-                print("Using LLM analyzer")
+            # Priority 1: Use Ollama LLM analyzer if available
+            if self.ollama_analyzer and self.ollama_analyzer.is_service_available():
+                print("Using Ollama LLM analyzer for real AI summarization")
+                try:
+                    result = self.ollama_analyzer.generate_intelligence_report(articles, query, max_length)
+                    print(f"Ollama LLM summary result: '{result[:100]}...' ({len(result)} chars)")
+                    if result and len(result.strip()) > 50:
+                        # Combine definition with summary if available
+                        if definition_text:
+                            combined = f"{definition_text}\n\n{result}"
+                            return combined
+                        return result
+                except Exception as e:
+                    print(f"Ollama LLM failed: {e}, falling back to next option")
+            
+            # Priority 2: Try to use LLM analyzer if available
+            elif self.llm_analyzer:
+                print("Using legacy LLM analyzer")
                 result = self._generate_llm_summary(articles, query, max_length)
                 print(f"LLM summary result: '{result}' ({len(result)} chars)")
                 # Combine definition with summary if available
@@ -370,6 +469,8 @@ class FactrylEngine:
                     combined = f"{definition_text}\n\n{result}"
                     return combined
                 return result
+            
+            # Priority 3: Use AI analyzer if available
             elif self.ai_analyzer:
                 print("Using AI analyzer")
                 result = self._generate_ai_summary(articles, query, max_length)
@@ -379,6 +480,8 @@ class FactrylEngine:
                     combined = f"{definition_text}\n\n{result}"
                     return combined
                 return result
+            
+            # Priority 4: Use intelligent analysis fallback
             else:
                 print("Using intelligent analysis")
                 result = self._generate_intelligent_summary(articles, query, max_length)
@@ -388,12 +491,123 @@ class FactrylEngine:
                     combined = f"{definition_text}\n\n{result}"
                     return combined
                 return result
+                
         except Exception as e:
             self.logger.error(f"Summary generation failed: {e}")
             print(f"Summary generation error: {e}")
             fallback = self._generate_intelligent_summary(articles, query, max_length)
             print(f"Fallback summary: '{fallback}' ({len(fallback)} chars)")
             return fallback
+    
+    async def generate_article_summary(self, article: Dict[str, Any], max_length: int = 120) -> str:
+        """Generate a concise summary for a single article with smart source management."""
+        try:
+            # Always try to generate actual content summaries, not just titles
+            content = article.get('content', '')
+            title = article.get('title', '')
+            
+            # First, try to enhance the article content if it's short
+            enhanced_article = article
+            if (self.article_extractor and 
+                not article.get('metadata', {}).get('content_enhanced') and
+                len(content) < 300):
+                try:
+                    enhanced_article = await self.enhance_single_article(article)
+                    content = enhanced_article.get('content', '')
+                    print(f"Enhanced article content: {len(content)} chars")
+                except Exception as e:
+                    print(f"Single article enhancement failed: {e}")
+            
+            # Try LLM summarization first if available and content is substantial
+            if (self.ollama_analyzer and 
+                self.ollama_analyzer.is_service_available() and 
+                len(content) > 100):
+                try:
+                    summary = self.ollama_analyzer.generate_article_summary(enhanced_article, max_length)
+                    if summary and len(summary.strip()) > 30:
+                        print(f"LLM summary generated: '{summary[:50]}...' ({len(summary)} chars)")
+                        return summary
+                except Exception as e:
+                    print(f"Ollama article summary failed: {e}")
+            
+            # Intelligent content extraction from article content
+            if len(content) > 100:
+                # Clean the content
+                clean_content = self._clean_html(content)
+                
+                # Try to extract key information from the content
+                sentences = clean_content.split('. ')
+                
+                # Look for the most informative sentences (skip very short ones)
+                best_sentences = []
+                for sentence in sentences[:5]:  # Check first 5 sentences
+                    sentence = sentence.strip()
+                    if (len(sentence) > 30 and 
+                        not sentence.lower().startswith(('click', 'read more', 'subscribe')) and
+                        not sentence.endswith('...') and
+                        '©' not in sentence):
+                        best_sentences.append(sentence)
+                
+                if best_sentences:
+                    # Use the first good sentence, but make it more descriptive
+                    first_sentence = best_sentences[0]
+                    
+                    # If sentence is too long, truncate intelligently
+                    if len(first_sentence) > max_length:
+                        # Try to end at a natural break
+                        truncated = first_sentence[:max_length-3]
+                        last_space = truncated.rfind(' ')
+                        if last_space > max_length * 0.7:  # Don't cut too short
+                            truncated = truncated[:last_space]
+                        return truncated + "..."
+                    else:
+                        return first_sentence
+                
+                # If no good sentences, create a summary from the content
+                words = clean_content.split()
+                if len(words) > 20:
+                    # Take first part of content and clean it up
+                    summary_words = words[:min(20, len(words))]
+                    summary = ' '.join(summary_words)
+                    
+                    if len(summary) > max_length:
+                        summary = summary[:max_length-3] + "..."
+                    
+                    return summary
+            
+            # Fallback: Enhance the title to make it more descriptive
+            if title:
+                clean_title = self._clean_html(title)
+                
+                # If title is very short, try to make it more descriptive
+                if len(clean_title) < 60:
+                    source = article.get('source', '').title()
+                    if source and source not in clean_title:
+                        enhanced_title = f"{clean_title} - {source} reports on recent developments"
+                        if len(enhanced_title) <= max_length:
+                            return enhanced_title
+                
+                # Return title with intelligent truncation
+                if len(clean_title) <= max_length:
+                    return clean_title
+                else:
+                    # Truncate at word boundary
+                    truncated = clean_title[:max_length-3]
+                    last_space = truncated.rfind(' ')
+                    if last_space > max_length * 0.7:
+                        truncated = truncated[:last_space]
+                    return truncated + "..."
+            
+            # Final fallback
+            return "Article content available for review"
+            
+        except Exception as e:
+            print(f"Article summary generation failed: {e}")
+            title = article.get('title', 'Article')
+            if len(title) <= max_length:
+                return title
+            else:
+                return title[:max_length-3] + "..."
     
     def _get_simple_definition(self, query: str) -> str:
         """Get a simple definition using the dictionary scraper."""
@@ -665,24 +879,75 @@ Generate the intelligence summary now:
         
         print(f"Generating intelligent fallback summary for '{query}' with {len(articles)} articles")
         
-        # Extract clean titles
+        # Extract clean titles and content
         clean_titles = []
-        for article in articles[:5]:
+        content_snippets = []
+        sources = set()
+        
+        for article in articles[:8]:  # Use top 8 articles
             title = self._clean_html(article.get('title', ''))
+            content = self._clean_html(article.get('content', ''))
+            
             if len(title) > 10 and not title.startswith('<'):
                 clean_titles.append(title)
+                sources.add(article.get('source', 'unknown'))
+                
+                if content and len(content) > 50:
+                    # Extract first meaningful sentence from content
+                    sentences = content.split('. ')
+                    for sentence in sentences[:2]:
+                        if len(sentence) > 30 and len(sentence) < 200:
+                            content_snippets.append(sentence.strip())
+                            break
         
-        # Get top story
-        main_story = clean_titles[0] if clean_titles else "Multiple developments"
+        if not clean_titles:
+            return f"Limited information available about {query}."
         
-        # Get source info
-        sources = list(set(article.get('source', 'unknown') for article in articles[:5]))
+        # Create a natural narrative summary
+        main_story = clean_titles[0]
         
-        # Generate concise summary
-        if clean_titles:
-            summary = f"Intelligence Analysis: {query.title()}. Current developments include {main_story.lower()}. Analysis of {len(articles)} sources from {len(sources)} outlets reveals ongoing coverage across multiple platforms. Continued monitoring recommended."
+        # Generate a natural summary based on the content
+        if content_snippets:
+            # Use actual content snippets to create a meaningful summary
+            primary_content = content_snippets[0]
+            
+            # Create a flowing narrative
+            if len(content_snippets) > 1:
+                secondary_content = content_snippets[1]
+                summary = f"{primary_content}. Additional reporting indicates {secondary_content.lower()}. Coverage from multiple sources suggests continued developments in this area."
+            else:
+                summary = f"{primary_content}. This development represents current activity and ongoing interest in {query.lower()}."
         else:
-            summary = f"Intelligence Analysis: {query.title()}. Active coverage detected across {len(articles)} articles from {len(sources)} sources. Multiple developments underway with continued reporting expected."
+            # Fallback to title-based summary
+            if len(clean_titles) > 1:
+                summary = f"{main_story}. Related developments include coverage of similar topics across multiple sources, indicating ongoing interest and activity in {query.lower()}."
+            else:
+                summary = f"{main_story}. This development highlights current activity and interest surrounding {query.lower()}."
         
-        print(f"Generated fallback summary: '{summary[:100]}...'")
-        return summary 
+        # Clean up and limit length
+        summary = summary.replace('..', '.').strip()
+        if len(summary) > max_length:
+            # Truncate at sentence boundary if possible
+            sentences = summary.split('. ')
+            result = sentences[0]
+            for sentence in sentences[1:]:
+                if len(result + '. ' + sentence) <= max_length - 20:
+                    result += '. ' + sentence
+                else:
+                    break
+            summary = result + ('.' if not result.endswith('.') else '')
+        
+        print(f"Generated natural summary: '{summary[:100]}...'")
+        return summary
+    
+    async def enhance_single_article(self, article: Dict[str, Any]) -> Dict[str, Any]:
+        """Enhance a single article with full content extraction."""
+        if not self.article_extractor:
+            return article
+        
+        try:
+            enhanced_articles = await self.article_extractor.enhance_articles_batch([article], max_concurrent=1)
+            return enhanced_articles[0] if enhanced_articles else article
+        except Exception as e:
+            print(f"Single article enhancement failed: {e}")
+            return article 

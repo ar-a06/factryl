@@ -12,6 +12,10 @@ from flask import Flask, render_template, request, jsonify
 import threading
 import os
 from typing import Dict, Any, List
+from threading import Thread
+import sys
+import json
+from pathlib import Path
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -460,6 +464,247 @@ def api_image_search():
             'height': 300,
             'error': str(e)
         })
+
+
+@app.route('/api/article-summary', methods=['POST'])
+def api_article_summary():
+    """Generate LLM summary for individual articles."""
+    try:
+        data = request.get_json()
+        
+        if not data or 'article' not in data:
+            return jsonify({'error': 'No article provided'}), 400
+        
+        article = data['article']
+        max_words = data.get('max_words', 120)  # Increased default length
+        
+        print(f"Generating summary for article: {article.get('title', 'Unknown')[:50]}...")
+        
+        start_time = time.time()
+        
+        # Handle async function call properly
+        def run_async_summary():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(engine.generate_article_summary(article, max_words))
+            finally:
+                loop.close()
+        
+        # Generate article summary using the engine's new method
+        summary = run_async_summary()
+        
+        processing_time = time.time() - start_time
+        
+        print(f"Article summary generated: {len(summary)} characters")
+        
+        return jsonify({
+            'summary': summary,
+            'processing_time': round(processing_time, 2),
+            'word_count': len(summary.split()),
+            'max_words': max_words,
+            'llm_used': engine.ollama_analyzer is not None and engine.ollama_analyzer.is_service_available()
+        })
+        
+    except Exception as e:
+        logger.error(f"Article summary generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Article summary generation failed: {str(e)}'}), 500
+
+@app.route('/api/batch-article-summaries', methods=['POST'])
+def api_batch_article_summaries():
+    """Generate LLM summaries for multiple articles efficiently."""
+    try:
+        data = request.get_json()
+        
+        if not data or 'articles' not in data:
+            return jsonify({'error': 'No articles provided'}), 400
+        
+        articles = data['articles']
+        max_words = data.get('max_words', 120)  # Increased default length
+        
+        print(f"Generating summaries for {len(articles)} articles...")
+        
+        start_time = time.time()
+        summaries = []
+        
+        def run_async_summary(article):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(engine.generate_article_summary(article, max_words))
+            finally:
+                loop.close()
+        
+        for i, article in enumerate(articles):
+            try:
+                summary = run_async_summary(article)
+                summaries.append({
+                    'index': i,
+                    'summary': summary,
+                    'title': article.get('title', 'Unknown'),
+                    'source': article.get('source', 'Unknown')
+                })
+            except Exception as e:
+                print(f"Failed to generate summary for article {i}: {e}")
+                summaries.append({
+                    'index': i,
+                    'summary': article.get('title', 'Article content available.')[:100] + '...',
+                    'title': article.get('title', 'Unknown'),
+                    'source': article.get('source', 'Unknown'),
+                    'error': str(e)
+                })
+        
+        processing_time = time.time() - start_time
+        
+        print(f"Batch summary generation complete: {len(summaries)} summaries in {processing_time:.2f}s")
+        
+        return jsonify({
+            'summaries': summaries,
+            'processing_time': round(processing_time, 2),
+            'total_articles': len(articles),
+            'successful_summaries': len([s for s in summaries if 'error' not in s]),
+            'llm_used': engine.ollama_analyzer is not None and engine.ollama_analyzer.is_service_available()
+        })
+        
+    except Exception as e:
+        logger.error(f"Batch article summary generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Batch article summary generation failed: {str(e)}'}), 500
+
+@app.route('/api/llm-health')
+def api_llm_health():
+    """Check LLM service health."""
+    try:
+        health_info = {
+            'ollama_available': engine.ollama_analyzer is not None,
+            'ollama_status': 'unavailable',
+            'model': None,
+            'response_time': None
+        }
+        
+        if engine.ollama_analyzer:
+            ollama_health = engine.ollama_analyzer.health_check()
+            health_info.update({
+                'ollama_status': ollama_health.get('status', 'unknown'),
+                'model': ollama_health.get('model'),
+                'response_time': ollama_health.get('response_time'),
+                'error': ollama_health.get('error')
+            })
+        
+        return jsonify(health_info)
+        
+    except Exception as e:
+        logger.error(f"LLM health check error: {e}")
+        return jsonify({
+            'ollama_available': False,
+            'ollama_status': 'error',
+            'error': str(e)
+        }), 500
+
+@app.route('/api/youtube-videos', methods=['POST'])
+async def youtube_videos():
+    """Fetch YouTube videos for the search query."""
+    try:
+        data = request.get_json()
+        query = data.get('query', '').strip()
+        
+        if not query:
+            return jsonify({'error': 'Query is required'}), 400
+        
+        logger.info(f"YouTube video search request: '{query}'")
+        
+        # For now, use mock data based on existing structure
+        # TODO: Integrate with actual YouTube API when available
+        mock_videos = [
+            {
+                "title": f"Physics Explained: {query.title()} Fundamentals",
+                "description": f"Comprehensive guide to understanding {query} with clear explanations and visual demonstrations.",
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+                "channel_name": "Physics World",
+                "channel_url": "https://www.youtube.com/channel/UC_physics_world",
+                "published_at": "2025-05-20T18:45:22Z",
+                "duration": "0:12:45",
+                "source": "youtube",
+                "source_detail": "YouTube - Physics World",
+                "credibility_info": {
+                    "score": 95,
+                    "bias": "Educational",
+                    "category": "Educational Content"
+                },
+                "metadata": {
+                    "views": 1250000,
+                    "likes": 45000,
+                    "comments": 3200,
+                    "channel_subscribers": 2100000,
+                    "channel_verified": true
+                }
+            },
+            {
+                "title": f"Advanced {query.title()} Concepts",
+                "description": f"Deep dive into advanced concepts in {query} for students and researchers.",
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+                "channel_name": "MIT OpenCourseWare",
+                "channel_url": "https://www.youtube.com/channel/UC_mit_opencourse",
+                "published_at": "2025-05-19T14:30:15Z",
+                "duration": "0:25:30",
+                "source": "youtube",
+                "source_detail": "YouTube - MIT OpenCourseWare",
+                "credibility_info": {
+                    "score": 98,
+                    "bias": "Academic",
+                    "category": "Educational Content"
+                },
+                "metadata": {
+                    "views": 890000,
+                    "likes": 32000,
+                    "comments": 1800,
+                    "channel_subscribers": 5400000,
+                    "channel_verified": true
+                }
+            },
+            {
+                "title": f"{query.title()} in 10 Minutes",
+                "description": f"Quick overview of key {query} principles and applications.",
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+                "channel_name": "SciShow",
+                "channel_url": "https://www.youtube.com/channel/UC_scishow",
+                "published_at": "2025-05-18T12:15:30Z",
+                "duration": "0:10:22",
+                "source": "youtube",
+                "source_detail": "YouTube - SciShow",
+                "credibility_info": {
+                    "score": 92,
+                    "bias": "Popular Science",
+                    "category": "Educational Content"
+                },
+                "metadata": {
+                    "views": 567000,
+                    "likes": 28000,
+                    "comments": 950,
+                    "channel_subscribers": 7200000,
+                    "channel_verified": true
+                }
+            }
+        ]
+        
+        # Sort by views (most viewed first)
+        sorted_videos = sorted(mock_videos, key=lambda x: x['metadata']['views'], reverse=True)
+        
+        return jsonify({
+            'videos': sorted_videos,
+            'total': len(sorted_videos),
+            'query': query
+        })
+        
+    except Exception as e:
+        logger.error(f"YouTube video search error: {str(e)}")
+        return jsonify({'error': 'Failed to fetch videos'}), 500
 
 @app.errorhandler(404)
 def page_not_found(e):
