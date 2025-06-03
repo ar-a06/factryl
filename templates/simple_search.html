@@ -261,6 +261,29 @@
             transform: translateY(-2px);
         }
 
+        .definition-tile::after {
+            /* content: '🖼️ Click to view full image'; */
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        .definition-tile:hover::after {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         .definition-loading, .summary-loading {
             display: flex;
             align-items: center;
@@ -1545,6 +1568,158 @@
         .featured-article-tile:hover::before {
             opacity: 1;
         }
+
+        /* Image Modal - Match Score and Video Modal Style */
+        .image-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(1px);
+            z-index: 10002;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .image-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .image-modal-content {
+            background: linear-gradient(135deg, 
+                rgba(15, 23, 42, 0.85) 0%, 
+                rgba(30, 41, 59, 0.80) 50%,
+                rgba(51, 65, 85, 0.85) 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 18px;
+            max-width: min(90vw, 800px);
+            max-height: min(90vh, 700px);
+            width: auto;
+            box-shadow: 
+                0 16px 32px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25),
+                0 0 25px rgba(16, 185, 129, 0.1);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: scale(0.8) translateY(25px) rotateX(8deg);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .image-modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(16, 185, 129, 0.8) 20%, 
+                rgba(16, 185, 129, 0.8) 50%,
+                rgba(16, 185, 129, 0.8) 80%,
+                transparent 100%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        .image-modal.show .image-modal-content {
+            transform: scale(1) translateY(0) rotateX(0deg);
+        }
+
+        .image-modal-header {
+            font-weight: 500;
+            margin-bottom: 14px;
+            color: #fff;
+            text-align: center;
+            border-bottom: 2px solid rgba(16, 185, 129, 0.3);
+            padding-bottom: 8px;
+            font-size: 0.9rem;
+            text-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+            letter-spacing: 0.2px;
+            animation: glow-green 2s ease-in-out infinite alternate;
+            flex-shrink: 0;
+        }
+
+        @keyframes glow-green {
+            from { text-shadow: 0 0 12px rgba(16, 185, 129, 0.3); }
+            to { text-shadow: 0 0 16px rgba(16, 185, 129, 0.5), 0 0 20px rgba(16, 185, 129, 0.2); }
+        }
+
+        .image-modal-body {
+            padding: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+        }
+
+        .image-modal-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .image-modal-image:hover {
+            transform: scale(1.02);
+        }
+
+        .image-attribution {
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .image-attribution a {
+            color: rgba(16, 185, 129, 0.8);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .image-attribution a:hover {
+            color: rgba(16, 185, 129, 1);
+        }
+
+        .image-loading-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 40px;
+            font-size: 0.8rem;
+        }
+
+        .image-loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body>
@@ -1603,6 +1778,20 @@
                 <div class="video-loading-state">
                     <div class="video-loading-spinner"></div>
                     <span>Loading video details...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div class="image-modal" id="imageModal">
+        <div class="image-modal-content">
+            <button class="modal-close" onclick="hideImageModal()">&times;</button>
+            <div class="image-modal-header">Image</div>
+            <div class="image-modal-body" id="imageModalContent">
+                <div class="image-loading-state">
+                    <div class="image-loading-spinner"></div>
+                    <span>Loading image...</span>
                 </div>
             </div>
         </div>
@@ -4813,6 +5002,30 @@
                     hideVideoStatsModal();
                 }
             });
+
+            // Initialize image modal event listeners
+            console.log('🔧 Setting up image modal event listeners');
+            
+            const imageModal = document.getElementById('imageModal');
+            if (imageModal) {
+                console.log('🔧 Image modal found, attaching backdrop click listener');
+                
+                // Ensure the close button works
+                const imageCloseButton = imageModal.querySelector('.modal-close');
+                if (imageCloseButton) {
+                    console.log('🔧 Image modal close button found, attaching click listener');
+                    imageCloseButton.addEventListener('click', function(e) {
+                        console.log('🔒 Image modal close button clicked');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        hideImageModal();
+                    });
+                } else {
+                    console.error('🔧 Close button not found in image modal');
+                }
+            } else {
+                console.error('🔧 Image modal not found during initialization');
+            }
         });
 
         // Function to populate the featured article tile
@@ -5115,6 +5328,187 @@
         // REMOVED DUPLICATE BROKEN playNextVideo() function that called undefined functions
         // The working playNextVideo() function is defined earlier in the file around line 2976
         
+        // Image Modal Functions
+        function showImageModal(imageUrl, query, attribution = null) {
+            const modal = document.getElementById('imageModal');
+            const content = document.getElementById('imageModalContent');
+            const header = modal.querySelector('.image-modal-header');
+            
+            // Update header with query
+            header.textContent = query ? `image of "${query}"` : 'Image';
+            
+            // Show loading state
+            content.innerHTML = `
+                <div class="image-loading-state">
+                    <div class="image-loading-spinner"></div>
+                    <span>Loading image...</span>
+                </div>
+            `;
+            
+            // Show modal
+            modal.classList.add('show');
+            
+            // Load and display the image
+            if (imageUrl) {
+                const img = new Image();
+                img.onload = function() {
+                    let attributionHtml = '';
+                    if (attribution) {
+                        if (attribution.source_url) {
+                            attributionHtml = `
+                                <div class="image-attribution">
+                                    Image source: <a href="${attribution.source_url}" target="_blank" rel="noopener">${attribution.source || 'Source'}</a>
+                                </div>
+                            `;
+                        } else if (attribution.source) {
+                            attributionHtml = `
+                                <div class="image-attribution">
+                                    Image source: ${attribution.source}
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    content.innerHTML = `
+                        <img src="${imageUrl}" alt="${query || 'Image'}" class="image-modal-image">
+                        ${attributionHtml}
+                    `;
+                };
+                
+                img.onerror = function() {
+                    content.innerHTML = `
+                        <div class="image-loading-state">
+                            <span style="color: rgba(239, 68, 68, 0.8);">Failed to load image</span>
+                        </div>
+                    `;
+                };
+                
+                img.src = imageUrl;
+            }
+        }
+        
+        function hideImageModal() {
+            const modal = document.getElementById('imageModal');
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        }
+
+        // Event listeners for video stats modal (using same pattern as article stats)
+        document.addEventListener('click', function(e) {
+            // Handle video info text clicks to open video stats modal
+            if (e.target.closest('[onclick*="showVideoStatsModal"]')) {
+                console.log('Video info text clicked');
+                // The onclick handler will take care of opening the modal
+            }
+        });
+        
+        // Close video modal when clicking backdrop (same as article modal)
+        document.getElementById('videoStatsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                console.log('Video modal backdrop clicked, closing modal');
+                hideVideoStatsModal();
+            }
+        });
+        
+        // Close video modal with Escape key (same as article modal)
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('videoStatsModal').classList.contains('show')) {
+                console.log('Escape key pressed, closing video modal');
+                hideVideoStatsModal();
+            }
+        });
+
+        // Image Modal Event Listeners
+        document.addEventListener('click', function(e) {
+            // Handle definition tile clicks to open image modal
+            if (e.target.classList.contains('definition-tile') || e.target.closest('.definition-tile')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const definitionTile = e.target.classList.contains('definition-tile') ? e.target : e.target.closest('.definition-tile');
+                const query = document.getElementById('searchInput').value.trim();
+                
+                if (query && definitionTile) {
+                    // Check if we have a cached image for this query
+                    if (imageCache.has(query)) {
+                        const cachedData = imageCache.get(query);
+                        showImageModal(cachedData.image_url, query, {
+                            source: cachedData.source || 'Image Search',
+                            source_url: cachedData.source_url || null
+                        });
+                    } else {
+                        // Load image for modal display
+                        showImageModal(null, query, null);
+                        loadImageForModal(query);
+                    }
+                }
+            }
+        });
+        
+        // Close image modal when clicking backdrop
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideImageModal();
+            }
+        });
+        
+        // Close image modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('imageModal').classList.contains('show')) {
+                hideImageModal();
+            }
+        });
+
+        // Function to load image specifically for modal display
+        async function loadImageForModal(query) {
+            try {
+                const response = await fetch('/api/image-search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                if (response.ok) {
+                    const imageData = await response.json();
+                    
+                    if (imageData.image_url) {
+                        // Cache the result
+                        imageCache.set(query, imageData);
+                        
+                        // Update the modal with the loaded image
+                        const modal = document.getElementById('imageModal');
+                        if (modal.classList.contains('show')) {
+                            showImageModal(imageData.image_url, query, {
+                                source: imageData.source || 'Image Search',
+                                source_url: imageData.source_url || null
+                            });
+                        }
+                    } else {
+                        // Handle case where no image was found
+                        const content = document.getElementById('imageModalContent');
+                        content.innerHTML = `
+                            <div class="image-loading-state">
+                                <span style="color: rgba(239, 68, 68, 0.8);">No image found for "${query}"</span>
+                            </div>
+                        `;
+                    }
+                } else {
+                    throw new Error('Failed to fetch image');
+                }
+                
+            } catch (error) {
+                console.error('Image modal load error:', error);
+                const content = document.getElementById('imageModalContent');
+                content.innerHTML = `
+                    <div class="image-loading-state">
+                        <span style="color: rgba(239, 68, 68, 0.8);">Failed to load image</span>
+                    </div>
+                `;
+            }
+        }
     </script>
     <script>
     (function() {
