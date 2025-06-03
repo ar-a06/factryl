@@ -75,25 +75,25 @@ except ImportError:
     GOOGLE_NEWS_AVAILABLE = False
 
 try:
-    from ..scraper.search.duckduckgo import DuckDuckGoSearchScraper
+    from ..scraper.search.duckduckgo import DuckDuckGoScraper
     DUCKDUCKGO_AVAILABLE = True
 except ImportError:
     DUCKDUCKGO_AVAILABLE = False
 
 try:
-    from ..scraper.search.bing import BingSearchScraper
+    from ..scraper.search.bing import BingScraper
     BING_AVAILABLE = True
 except ImportError:
     BING_AVAILABLE = False
 
 try:
-    from ..scraper.search.safari import SafariSearchScraper
+    from ..scraper.search.safari import SafariScraper
     SAFARI_AVAILABLE = True
 except ImportError:
     SAFARI_AVAILABLE = False
 
 try:
-    from ..scraper.search.edge import EdgeSearchScraper
+    from ..scraper.search.edge import EdgeScraper
     EDGE_AVAILABLE = True
 except ImportError:
     EDGE_AVAILABLE = False
@@ -287,13 +287,13 @@ class FactrylEngine:
         
         # Search scrapers
         if DUCKDUCKGO_AVAILABLE:
-            self.scrapers['duckduckgo'] = DuckDuckGoSearchScraper()
+            self.scrapers['duckduckgo'] = DuckDuckGoScraper()
         if BING_AVAILABLE:
-            self.scrapers['bing'] = BingSearchScraper()
+            self.scrapers['bing'] = BingScraper()
         if SAFARI_AVAILABLE:
-            self.scrapers['safari'] = SafariSearchScraper()
+            self.scrapers['safari'] = SafariScraper()
         if EDGE_AVAILABLE:
-            self.scrapers['edge'] = EdgeSearchScraper()
+            self.scrapers['edge'] = EdgeScraper()
         
         # Dictionary scraper
         if DICTIONARY_AVAILABLE:
@@ -301,15 +301,27 @@ class FactrylEngine:
         
         self.logger.info(f"Initialized {len(self.scrapers)} scrapers")
     
-    async def search(self, query: str, max_results: int = 25) -> Dict[str, Any]:
+    async def search(self, query: str, max_results: int = 40) -> Dict[str, Any]:
         """Perform a comprehensive search across all available sources."""
         start_time = time.time()
         self.logger.info(f"Starting search for: {query}")
         
+        # Calculate per-scraper limits to avoid collecting too many results initially
+        num_scrapers = len([name for name in self.scrapers.keys() if name != 'dictionary'])
+        # Aim for 1.5x max_results total to allow for deduplication and filtering
+        total_target = int(max_results * 1.5)  # e.g., 60 articles to filter down to 40
+        per_scraper_limit = max(6, min(12, total_target // num_scrapers))  # 6-12 articles per scraper
+        
+        print(f"Search strategy: Target {max_results} final results from {num_scrapers} scrapers")
+        print(f"Collecting {total_target} total articles (~{per_scraper_limit} per scraper) for filtering")
+        
         # Run scrapers in parallel
         async def run_scraper(name: str, scraper: Any) -> List[Dict[str, Any]]:
             try:
-                results = await scraper.search(query, max_results)
+                print(f"  Running {name} scraper (limit: {per_scraper_limit})")
+                results = await scraper.search(query, per_scraper_limit)
+                print(f"  {name} returned {len(results)} articles")
+                
                 # Add source credibility information
                 cred_info = self.get_source_credibility(name)
                 for result in results:
@@ -321,6 +333,7 @@ class FactrylEngine:
                 return results
             except Exception as e:
                 self.logger.error(f"Scraper {name} failed: {e}")
+                print(f"  {name} scraper failed: {e}")
                 return []
         
         # Run all scrapers concurrently except dictionary (exclude from main results)
@@ -335,6 +348,8 @@ class FactrylEngine:
         combined_results = []
         for results in all_results:
             combined_results.extend(results)
+        
+        print(f"Combined {len(combined_results)} total articles from all scrapers")
         
         # Enhance articles with full content extraction if available
         if self.article_extractor and combined_results:
@@ -351,6 +366,7 @@ class FactrylEngine:
         
         # Deduplicate results
         unique_results = self.deduplicator.deduplicate(combined_results)
+        print(f"After deduplication: {len(unique_results)} unique articles ({len(combined_results) - len(unique_results)} duplicates removed)")
         
         # Score and sort results
         scored_results = []
@@ -368,8 +384,6 @@ class FactrylEngine:
             raw_credibility = cred_info['score']  # This is 0.0-1.0 range
             result['credibility_score'] = round(raw_credibility * 100, 1)  # Convert to 0-100 scale
             
-            print(f"Debug - Article: {result.get('title', 'No title')[:50]}... Source: {result['source']} Raw Cred: {raw_credibility} Scaled Cred: {result['credibility_score']}")
-            
             # Calculate composite score
             score_dict = self.scorer.calculate_score(result)
             result['composite_score'] = score_dict['composite']
@@ -379,6 +393,23 @@ class FactrylEngine:
         # Sort by composite score
         scored_results.sort(key=lambda x: x['composite_score'], reverse=True)
         final_results = scored_results[:max_results]
+        
+        print(f"Final results: {len(final_results)} articles selected from {len(scored_results)} scored articles")
+        print(f"Top 5 articles by score:")
+        for i, article in enumerate(final_results[:5]):
+            title = article.get('title', 'No title')[:60]
+            score = article.get('composite_score', 0)
+            relevance = article.get('relevance_score', 0)
+            source = article.get('source', 'unknown')
+            
+            # Ensure numeric values for formatting
+            try:
+                score_val = float(score) if isinstance(score, (int, float)) else 0.0
+                relevance_val = float(relevance) if isinstance(relevance, (int, float)) else 0.0
+                source_val = str(source) if source else 'unknown'
+                print(f"  {i+1}. [{source_val}] {title}... (Score: {score_val:.2f}, Relevance: {relevance_val:.2f})")
+            except (ValueError, TypeError) as e:
+                print(f"  {i+1}. [{source}] {title}... (Score: {score}, Relevance: {relevance})")
         
         # Calculate statistics (excluding dictionary from source counts)
         processing_time = time.time() - start_time

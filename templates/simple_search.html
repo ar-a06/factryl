@@ -951,6 +951,7 @@
             padding: 18px;
             max-width: 320px;
             width: 85%;
+            max-height: 80vh;
             box-shadow: 
                 0 16px 32px rgba(0, 0, 0, 0.3),
                 0 0 0 1px rgba(255, 255, 255, 0.15),
@@ -962,6 +963,43 @@
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             overflow: hidden;
+        }
+
+        .video-modal-body {
+            padding: 0;
+            max-height: calc(80vh - 100px);
+            overflow-y: auto;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+
+        .video-modal-body::-webkit-scrollbar {
+            width: 4px;
+            background: transparent;
+            position: absolute;
+            right: 0;
+        }
+
+        .video-modal-body::-webkit-scrollbar-thumb {
+            background: #ef4444;
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            min-height: 20px;
+        }
+
+        .video-stats-modal-content:hover .video-modal-body::-webkit-scrollbar-thumb {
+            opacity: 1;
+        }
+
+        .video-modal-body::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 2px;
+        }
+
+        /* Ensure scrollbar appears on the far right */
+        .video-modal-body::-webkit-scrollbar-corner {
+            background: transparent;
         }
 
         .video-stats-modal-content::before {
@@ -1593,7 +1631,7 @@
 
             try {
                 console.log('Sending API request...');
-                const requestBody = { query, max_results: 40 };
+                const requestBody = { query, max_results: 50 };  
                 console.log('Request body:', requestBody);
                 
                 const response = await fetch('/api/search', {

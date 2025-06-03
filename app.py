@@ -29,7 +29,8 @@ try:
     # Load YouTube API key
     youtube_key = os.getenv('YOUTUBE_API_KEY')
     if youtube_key:
-        print(f"YouTube API key loaded: {youtube_key[:8]}..." + "*" * (len(youtube_key) - 8))
+        # print(f"YouTube API key loaded: {youtube_key[:8]}..." + "*" * (len(youtube_key) - 8))
+        print(f"YouTube API key loaded...")
     else:
         print("WARNING: YouTube API key not found in environment variables")
         
@@ -49,7 +50,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'factryl_secret_key_2024'
 
 # Initialize the Factryl Engine
-print("Starting Factryl Infometrics Web Application...")
+print("Starting Factryl...")
 engine = FactrylEngine()
 print(f"Loaded {len(engine.scrapers)} data sources")
 print("Access the application at: http://localhost:5000")
@@ -69,7 +70,7 @@ def api_search():
             return jsonify({'error': 'No query provided'}), 400
         
         query = data['query'].strip()
-        max_results = data.get('max_results', 25)
+        max_results = data.get('max_results', 40)
         
         if not query:
             return jsonify({'error': 'Empty query'}), 400
