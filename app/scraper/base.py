@@ -32,7 +32,15 @@ class WebBasedScraper(ABC):
         
     async def setup(self):
         """Set up the scraper session."""
-        if not self.session:
+        try:
+            # Check if session exists and is not closed
+            if not self.session or self.session.closed:
+                if self.session and self.session.closed:
+                    self.session = None
+                self.session = aiohttp.ClientSession()
+        except Exception as e:
+            logger.error(f"Error setting up session: {e}")
+            # Force create a new session
             self.session = aiohttp.ClientSession()
             
     async def close(self):

@@ -90,9 +90,14 @@ class DictionaryScraper:
             logger.info(f"Found proper noun definition for: '{query}'")
             return proper_noun_results[:max_results]
         
-        # STEP 3: Only now try with cleaned/split query as fallback
+        # STEP 3: Check if this is likely a proper noun that shouldn't be broken down
+        if self._is_likely_proper_noun(query):
+            logger.info(f"'{query}' appears to be a proper noun with no definition available - skipping fallback")
+            return []  # Don't fall back to individual words for proper nouns
+        
+        # STEP 4: Only try with cleaned/split query as fallback for regular words
         clean_query = self._clean_query(query)
-        if clean_query != query:
+        if clean_query != query and len(query.split()) == 1:  # Only for single words that were cleaned
             logger.info(f"Full query and proper nouns failed, trying cleaned query: '{clean_query}'")
             
             cleaned_results = await asyncio.gather(
@@ -107,8 +112,8 @@ class DictionaryScraper:
                 if isinstance(result, list):
                     results.extend(result)
         
-        # STEP 4: Try partial word matching as last resort
-        if not results:
+        # STEP 5: Try partial word matching as last resort (only for single words)
+        if not results and len(query.split()) == 1:
             logger.info(f"All previous attempts failed, trying partial matches for: '{query}'")
             partial_results = await self._search_partial_matches(query)
             results.extend(partial_results)
@@ -571,16 +576,27 @@ class DictionaryScraper:
             if all(word[0].isupper() for word in query_words if word):
                 return True
         
-        # Known person patterns
+        # Known person patterns (including K-pop artists)
         person_indicators = [
-            'kim seok jin', 'jin bts', 'taylor swift', 'elon musk', 'bill gates',
-            'steve jobs', 'donald trump', 'joe biden', 'barack obama', 'leonardo dicaprio',
-            'tom cruise', 'jennifer lawrence', 'brad pitt', 'angelina jolie',
-            'cristiano ronaldo', 'lionel messi', 'lebron james', 'michael jordan'
+            'kim seok jin', 'jin bts', 'park jimin', 'jimin bts', 'min yoon gi', 'suga bts', 'agust d',
+            'jung ho seok', 'j-hope bts', 'kim nam joon', 'rm bts', 'kim tae hyung', 'v bts', 'jeon jung kook', 'jungkook bts',
+            'taylor swift', 'elon musk', 'bill gates', 'steve jobs', 'donald trump', 'joe biden', 'barack obama', 
+            'leonardo dicaprio', 'tom cruise', 'jennifer lawrence', 'brad pitt', 'angelina jolie',
+            'cristiano ronaldo', 'lionel messi', 'lebron james', 'michael jordan', 'serena williams', 'roger federer',
+            'ariana grande', 'justin bieber', 'selena gomez', 'dua lipa', 'billie eilish', 'ed sheeran',
+            'robert downey jr', 'scarlett johansson', 'chris evans', 'chris hemsworth', 'mark zuckerberg',
+            'jeff bezos', 'warren buffett', 'oprah winfrey', 'ellen degeneres', 'jimmy fallon'
         ]
         
         query_lower = query.lower().strip()
         if query_lower in person_indicators:
+            return True
+        
+        # Check for common Korean name patterns
+        korean_name_patterns = [
+            'park ', 'kim ', 'lee ', 'choi ', 'jung ', 'shin ', 'han ', 'oh ', 'seo ', 'kang ', 'yoon ', 'jang ', 'lim ', 'min '
+        ]
+        if any(query_lower.startswith(pattern) for pattern in korean_name_patterns) and len(query_words) >= 2:
             return True
             
         return False
@@ -591,7 +607,31 @@ class DictionaryScraper:
         
         # Known people database
         people_info = {
+            'park jimin': {
+                'name': 'Park Jimin',
+                'description': 'South Korean singer, songwriter, and dancer, member of the world-renowned boy band BTS. Known for his exceptional vocals, contemporary dance skills, and charismatic stage presence.',
+                'profession': 'Singer, Songwriter, Dancer',
+                'nationality': 'South Korean',
+                'birth_year': '1995',
+                'notable_for': 'BTS member, solo artist, contemporary dance, vocal range'
+            },
+            'jimin bts': {
+                'name': 'Park Jimin (BTS)',
+                'description': 'South Korean singer, songwriter, and dancer, member of the world-renowned boy band BTS. Known for his exceptional vocals, contemporary dance skills, and charismatic stage presence.',
+                'profession': 'Singer, Songwriter, Dancer',
+                'nationality': 'South Korean',
+                'birth_year': '1995',
+                'notable_for': 'BTS member, solo artist, contemporary dance, vocal range'
+            },
             'kim seok jin': {
+                'name': 'Kim Seok-jin (Jin)',
+                'description': 'South Korean singer, songwriter, and member of the boy band BTS. Known for his vocals and visual appeal, often called the "visual" of the group.',
+                'profession': 'Singer, Songwriter',
+                'nationality': 'South Korean',
+                'birth_year': '1992',
+                'notable_for': 'Member of BTS, solo music career'
+            },
+            'jin bts': {
                 'name': 'Kim Seok-jin (Jin)',
                 'description': 'South Korean singer, songwriter, and member of the boy band BTS. Known for his vocals and visual appeal, often called the "visual" of the group.',
                 'profession': 'Singer, Songwriter',
@@ -694,4 +734,41 @@ Notable for: {person['notable_for']}"""
             'phonetic': '',
             'relevance_score': 0.75,
             'timestamp': None
-        }] 
+        }]
+    
+    def _is_likely_proper_noun(self, query: str) -> bool:
+        """Check if the query appears to be a proper noun that shouldn't be broken down."""
+        query_words = query.strip().split()
+        
+        # Heuristics for proper noun detection
+        if len(query_words) >= 2:
+            # Multiple words with proper capitalization
+            if all(word[0].isupper() for word in query_words if word):
+                return True
+        
+        # Known proper noun patterns (including K-pop artists and other entities)
+        proper_noun_indicators = [
+            # Cities and places
+            'new york', 'los angeles', 'chicago', 'san francisco', 'london', 'paris', 'tokyo', 'sydney',
+            # K-pop artists and celebrities
+            'park jimin', 'jimin bts', 'kim seok jin', 'jin bts', 'min yoon gi', 'suga bts', 'agust d',
+            'jung ho seok', 'j-hope bts', 'kim nam joon', 'rm bts', 'kim tae hyung', 'v bts', 'jeon jung kook', 'jungkook bts',
+            'taylor swift', 'elon musk', 'leonardo dicaprio', 'bill gates', 'matthew perry', 'steve jobs', 
+            'donald trump', 'joe biden', 'barack obama', 'cristiano ronaldo', 'lionel messi', 'lebron james', 'michael jordan',
+            'ariana grande', 'justin bieber', 'selena gomez', 'dua lipa', 'billie eilish', 'ed sheeran',
+            'robert downey jr', 'scarlett johansson', 'chris evans', 'chris hemsworth', 'mark zuckerberg',
+            'jeff bezos', 'warren buffett', 'oprah winfrey', 'ellen degeneres', 'jimmy fallon'
+        ]
+        
+        query_lower = query.lower().strip()
+        if query_lower in proper_noun_indicators:
+            return True
+        
+        # Check for common Korean name patterns
+        korean_name_patterns = [
+            'park ', 'kim ', 'lee ', 'choi ', 'jung ', 'shin ', 'han ', 'oh ', 'seo ', 'kang ', 'yoon ', 'jang ', 'lim ', 'min '
+        ]
+        if any(query_lower.startswith(pattern) for pattern in korean_name_patterns) and len(query_words) >= 2:
+            return True
+            
+        return False 

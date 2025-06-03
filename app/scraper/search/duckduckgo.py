@@ -20,10 +20,37 @@ class DuckDuckGoScraper(WebBasedScraper):
         self.search_url = "https://duckduckgo.com/html/"
         self.max_entries = self.config.get('max_entries', 15)
         
+    async def search(self, query: str, max_results: int = 15) -> List[Dict[str, Any]]:
+        """Search method expected by the engine."""
+        if not query:
+            return []
+        
+        # Update max_entries based on max_results parameter
+        original_max = self.max_entries
+        self.max_entries = max_results
+        
+        try:
+            # Ensure we have a fresh session
+            await self.setup()
+            results = await self.search_web(query)
+            return results[:max_results]  # Ensure we don't exceed the limit
+        except Exception as e:
+            logging.error(f"Error in DuckDuckGo search: {e}")
+            return []
+        finally:
+            # Restore original max_entries
+            self.max_entries = original_max
+        
     async def search_web(self, query: str) -> List[Dict[str, Any]]:
         """Search DuckDuckGo for the query and extract results."""
         try:
+            # Ensure session is properly set up
             await self.setup()
+            
+            # Double-check session is available
+            if not self.session or self.session.closed:
+                logging.error("DuckDuckGo: Session not available after setup")
+                return []
             
             # Prepare search parameters
             params = {
@@ -112,6 +139,8 @@ class DuckDuckGoScraper(WebBasedScraper):
                             continue
                     
                     return results
+                else:
+                    logging.error(f"DuckDuckGo returned status {response.status}")
                     
         except Exception as e:
             logging.error(f"Error searching DuckDuckGo: {e}")

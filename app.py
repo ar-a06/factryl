@@ -251,6 +251,102 @@ def api_image_search():
         from urllib.parse import quote_plus
         import re
         
+        def convert_wikimedia_to_direct_url(url):
+            """Convert Wikimedia Commons page URL to direct image URL."""
+            try:
+                print(f"Converting Wikimedia URL: {url}")
+                
+                # Handle Wikipedia page URLs
+                if 'wikipedia.org/wiki/File:' in url:
+                    # Extract filename from Wikipedia page URL
+                    filename = url.split('File:')[-1]
+                    # Remove any anchor tags or query parameters
+                    filename = filename.split('#')[0].split('?')[0]
+                    
+                    # Decode URL-encoded characters
+                    from urllib.parse import unquote
+                    filename = unquote(filename)
+                    
+                    # Create hash for directory structure
+                    import hashlib
+                    md5_hash = hashlib.md5(filename.encode('utf-8')).hexdigest()
+                    
+                    # Try different direct URL formats
+                    direct_urls = [
+                        f"https://upload.wikimedia.org/wikipedia/commons/{md5_hash[0]}/{md5_hash[:2]}/{filename}",
+                        f"https://upload.wikimedia.org/wikipedia/commons/thumb/{md5_hash[0]}/{md5_hash[:2]}/{filename}/400px-{filename}",
+                        f"https://commons.wikimedia.org/wiki/Special:FilePath/{filename}?width=400"
+                    ]
+                    
+                    # Test which URL works
+                    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                    for test_url in direct_urls:
+                        try:
+                            print(f"Testing Wikimedia direct URL: {test_url[:80]}...")
+                            resp = requests.head(test_url, timeout=3, headers=headers)
+                            if resp.status_code == 200:
+                                print(f"Success: {test_url}")
+                                return test_url
+                        except Exception as e:
+                            print(f"Failed: {str(e)[:50]}")
+                            continue
+                
+                # Handle already direct Wikimedia URLs
+                elif 'upload.wikimedia.org' in url:
+                    print(f"Already direct Wikimedia URL: {url}")
+                    return url
+                
+                # Handle commons.wikimedia.org page URLs
+                elif 'commons.wikimedia.org/wiki/File:' in url:
+                    filename = url.split('File:')[-1]
+                    filename = filename.split('#')[0].split('?')[0]
+                    
+                    # Use Special:FilePath for reliable access
+                    direct_url = f"https://commons.wikimedia.org/wiki/Special:FilePath/{filename}?width=400"
+                    print(f"Using Special:FilePath: {direct_url}")
+                    return direct_url
+                
+            except Exception as e:
+                print(f"Error converting Wikimedia URL: {e}")
+            
+            return url
+
+        def is_valid_image_url(url):
+            """Check if URL is a valid image URL."""
+            try:
+                print(f"Validating image URL: {url[:100]}...")
+                
+                # Basic URL validation
+                if not url or len(url) < 20:
+                    print("Failed: URL too short")
+                    return False
+                
+                # Special handling for Wikimedia URLs
+                if any(domain in url for domain in ['wikimedia.org', 'wikipedia.org']):
+                    print("Wikimedia URL detected - allowing")
+                    return True
+                
+                # Check for image file extensions
+                if not any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif']):
+                    print("Failed: No image extension found")
+                    return False
+                
+                # Filter out unwanted domains
+                blocked_domains = [
+                    'gstatic.com', 'googleusercontent.com', 'google.com',
+                    'facebook.com', 'instagram.com', 'x.com', 'twitter.com'
+                ]
+                
+                if any(domain in url.lower() for domain in blocked_domains):
+                    print(f"Failed: Blocked domain detected")
+                    return False
+                
+                print("URL passed validation")
+                return True
+            except Exception as e:
+                print(f"Validation error: {e}")
+                return False
+        
         try:
             # Method 1: Try to scrape Google Images (first result)
             search_url = f"https://www.google.com/search?q={quote_plus(query)}&tbm=isch&tbs=isz:m"
@@ -267,9 +363,14 @@ def api_image_search():
                 
                 # Look for image URLs in the page content - improved patterns
                 img_patterns = [
-                    r'"(https://[^"]*\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"',
-                    r'imgurl=(https://[^&]*\.(?:jpg|jpeg|png|webp)(?:\?[^&]*)?)',
-                    r'"ou":"(https://[^"]*\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"'
+                    r'"(https://[^"]*\.(?:jpg|jpeg|png|webp|gif)(?:\?[^"]*)?)"',
+                    r'imgurl=(https://[^&]*\.(?:jpg|jpeg|png|webp|gif)(?:\?[^&]*)?)',
+                    r'"ou":"(https://[^"]*\.(?:jpg|jpeg|png|webp|gif)(?:\?[^"]*)?)"',
+                    r'"(https://commons\.wikimedia\.org/wiki/File:[^"]+)"',  # Wikimedia Commons pages
+                    r'"(https://en\.wikipedia\.org/wiki/File:[^"]+)"',  # Wikipedia file pages
+                    r'"(https://upload\.wikimedia\.org/[^"]+\.(?:jpg|jpeg|png|webp|gif)[^"]*)"',  # Direct Wikimedia
+                    r'"(https://upload\.wikimedia\.org/wikipedia/commons/thumb/[^"]+)"',  # Wikimedia thumbs
+                    r'imgurl=(https://upload\.wikimedia\.org/[^&]+)'  # Wikimedia in imgurl
                 ]
                 
                 found_images = []
@@ -279,32 +380,37 @@ def api_image_search():
                         # Clean up the URL
                         img_url = match.replace('\\u003d', '=').replace('\\u0026', '&')
                         
-                        # Filter criteria
-                        if (len(img_url) > 30 and 
-                            'gstatic' not in img_url and 
-                            'googleusercontent' not in img_url and
-                            'google.com' not in img_url and
-                            not img_url.endswith('.gif')):
+                        # Convert Wikimedia Commons URLs to direct URLs
+                        if any(pattern in img_url for pattern in ['commons.wikimedia.org/wiki/File:', 'wikipedia.org/wiki/File:', 'upload.wikimedia.org']):
+                            original_url = img_url
+                            img_url = convert_wikimedia_to_direct_url(img_url)
+                            print(f"Converted: {original_url[:60]}... -> {img_url[:60]}...")
+                        
+                        # Apply validation
+                        if is_valid_image_url(img_url):
                             found_images.append(img_url)
                 
                 # Try to use the first good image found
-                for img_url in found_images[:3]:  # Try first 3 images
+                for img_url in found_images[:5]:  # Try first 5 images
                     try:
                         print(f"Testing image URL: {img_url[:80]}...")
                         
                         # Test if image is accessible
                         img_response = requests.head(img_url, timeout=3, headers=headers, allow_redirects=True)
                         if img_response.status_code == 200:
-                            image_data = {
-                                'image_url': img_url,
-                                'source': 'google_images',
-                                'description': f"Google Images result for '{query}'",
-                                'width': 400,
-                                'height': 300
-                            }
-                            
-                            print(f"Found working Google Images result for '{query}'")
-                            return jsonify(image_data)
+                            # Verify content type is actually an image
+                            content_type = img_response.headers.get('content-type', '').lower()
+                            if 'image' in content_type:
+                                image_data = {
+                                    'image_url': img_url,
+                                    'source': 'google_images',
+                                    'description': f"Google Images result for '{query}'",
+                                    'width': 400,
+                                    'height': 300
+                                }
+                                
+                                print(f"Found working Google Images result for '{query}'")
+                                return jsonify(image_data)
                     except Exception as e:
                         print(f"Image URL failed: {str(e)[:50]}...")
                         continue
@@ -329,20 +435,28 @@ def api_image_search():
                 try:
                     data = response.json()
                     if 'results' in data and len(data['results']) > 0:
-                        first_result = data['results'][0]
-                        img_url = first_result.get('image')
-                        
-                        if img_url:
-                            image_data = {
-                                'image_url': img_url,
-                                'source': 'duckduckgo',
-                                'description': f"DuckDuckGo search result for '{query}'",
-                                'width': 400,
-                                'height': 300
-                            }
+                        for result in data['results'][:3]:  # Try first 3 results
+                            img_url = result.get('image')
                             
-                            print(f"Found DuckDuckGo result: {img_url[:100]}...")
-                            return jsonify(image_data)
+                            if img_url and is_valid_image_url(img_url):
+                                # Test if image is accessible
+                                try:
+                                    img_response = requests.head(img_url, timeout=3, headers=headers, allow_redirects=True)
+                                    if img_response.status_code == 200:
+                                        content_type = img_response.headers.get('content-type', '').lower()
+                                        if 'image' in content_type:
+                                            image_data = {
+                                                'image_url': img_url,
+                                                'source': 'duckduckgo',
+                                                'description': f"DuckDuckGo search result for '{query}'",
+                                                'width': 400,
+                                                'height': 300
+                                            }
+                                            
+                                            print(f"Found DuckDuckGo result: {img_url[:100]}...")
+                                            return jsonify(image_data)
+                                except:
+                                    continue
                 except:
                     pass
             
@@ -366,24 +480,27 @@ def api_image_search():
                 bing_pattern = r'"murl":"([^"]+)"'
                 matches = re.findall(bing_pattern, content)
                 
-                for match in matches[:3]:  # Try first 3 images
+                for match in matches[:5]:  # Try first 5 images
                     try:
                         # Decode URL if needed
-                        img_url = match.replace('\\u002f', '/')
+                        img_url = match.replace('\\u002f', '/').replace('\\/','/')
                         
-                        # Test if image is accessible
-                        img_response = requests.head(img_url, timeout=3)
-                        if img_response.status_code == 200:
-                            image_data = {
-                                'image_url': img_url,
-                                'source': 'bing_images',
-                                'description': f"Bing Images result for '{query}'",
-                                'width': 400,
-                                'height': 300
-                            }
-                            
-                            print(f"Found Bing Images result: {img_url[:100]}...")
-                            return jsonify(image_data)
+                        if is_valid_image_url(img_url):
+                            # Test if image is accessible
+                            img_response = requests.head(img_url, timeout=3)
+                            if img_response.status_code == 200:
+                                content_type = img_response.headers.get('content-type', '').lower()
+                                if 'image' in content_type:
+                                    image_data = {
+                                        'image_url': img_url,
+                                        'source': 'bing_images',
+                                        'description': f"Bing Images result for '{query}'",
+                                        'width': 400,
+                                        'height': 300
+                                    }
+                                    
+                                    print(f"Found Bing Images result: {img_url[:100]}...")
+                                    return jsonify(image_data)
                     except:
                         continue
             
