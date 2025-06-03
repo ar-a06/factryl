@@ -171,7 +171,7 @@ class FactrylEngine:
         self.article_extractor = None
         if ARTICLE_EXTRACTOR_AVAILABLE:
             try:
-                extractor_config = config.get('article_extractor', {
+                extractor_config = self.config.get('article_extractor', {
                     'enable_caching': True,
                     'cache_ttl': 3600,
                     'max_content_length': 3000,
@@ -189,7 +189,7 @@ class FactrylEngine:
         self.source_manager = None
         if SMART_SOURCE_MANAGER_AVAILABLE:
             try:
-                source_config = config.get('source_manager', {})
+                source_config = self.config.get('source_manager', {})
                 self.source_manager = SmartSourceManager(source_config)
                 print("Smart source management enabled - Optimal LLM content prioritization")
             except Exception as e:

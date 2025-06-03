@@ -234,17 +234,13 @@ def api_health():
 @app.route('/api/image-search', methods=['POST'])
 def api_image_search():
     """Search for images related to the query."""
+    data = request.get_json()
+    query = data.get('query', '')
+    
+    if not query:
+        return jsonify({'error': 'Query parameter is required'}), 400
+
     try:
-        data = request.get_json()
-        
-        if not data or 'query' not in data:
-            return jsonify({'error': 'No query provided'}), 400
-        
-        query = data['query'].strip()
-        
-        if not query:
-            return jsonify({'error': 'Empty query'}), 400
-        
         print(f"Image search request: '{query}'")
         
         import requests
@@ -604,6 +600,72 @@ def api_image_search():
             'error': str(e)
         })
 
+@app.route('/api/article-image', methods=['POST'])
+def api_article_image():
+    """Extract the main image from a specific article URL."""
+    try:
+        data = request.get_json()
+        article_url = data.get('url', '')
+        article_title = data.get('title', '')
+        
+        if not article_url:
+            return jsonify({'error': 'Article URL is required'}), 400
+        
+        print(f"Extracting image from article: {article_url}")
+        
+        # Use the existing article extractor
+        from app.core.article_extractor import ArticleExtractor
+        import asyncio
+        
+        async def extract_article_image():
+            extractor = ArticleExtractor()
+            result = await extractor.extract_article_content(article_url)
+            return result
+        
+        # Run the async extraction
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            extraction_result = loop.run_until_complete(extract_article_image())
+        finally:
+            loop.close()
+        
+        if extraction_result.success and extraction_result.metadata:
+            top_image = extraction_result.metadata.get('top_image', '')
+            images = extraction_result.metadata.get('images', [])
+            
+            if top_image:
+                print(f"Found top image: {top_image}")
+                return jsonify({
+                    'success': True,
+                    'image_url': top_image,
+                    'all_images': images,
+                    'title': extraction_result.title or article_title,
+                    'source': 'article_extraction',
+                    'extraction_method': extraction_result.extraction_method
+                })
+            elif images:
+                print(f"Using first available image: {images[0]}")
+                return jsonify({
+                    'success': True,
+                    'image_url': images[0],
+                    'all_images': images,
+                    'title': extraction_result.title or article_title,
+                    'source': 'article_extraction',
+                    'extraction_method': extraction_result.extraction_method
+                })
+        
+        # Fallback to generic image search if no article image found
+        print(f"No article image found, falling back to generic search for: {article_title}")
+        return jsonify({
+            'success': False,
+            'error': 'No image found in article',
+            'fallback_available': True
+        })
+        
+    except Exception as e:
+        print(f"Error extracting article image: {e}")
+        return jsonify({'error': 'Failed to extract article image', 'details': str(e)}), 500
 
 @app.route('/api/article-summary', methods=['POST'])
 def api_article_summary():
@@ -1605,6 +1667,68 @@ def generate_video_details(video_id, video_url=None):
         "verified": random.choice([True, False]),
         "category": random.choice(["Music", "Entertainment", "Education", "Gaming", "Sports"])
     }
+
+@app.route('/api/debug-google-news', methods=['POST'])
+def debug_google_news():
+    """Debug endpoint to test Google News URL resolution."""
+    try:
+        data = request.get_json()
+        google_url = data.get('url', '')
+        
+        if not google_url:
+            return jsonify({'error': 'URL is required'}), 400
+        
+        print(f"=== DEBUGGING GOOGLE NEWS URL ===")
+        print(f"Input URL: {google_url}")
+        
+        # Use the existing article extractor
+        from app.core.article_extractor import ArticleExtractor
+        import asyncio
+        
+        async def debug_extraction():
+            extractor = ArticleExtractor()
+            
+            # Test URL resolution
+            print("Testing URL resolution...")
+            resolved_url = await extractor._resolve_google_news_url(google_url)
+            print(f"Resolved URL: {resolved_url}")
+            
+            # Test full extraction
+            print("Testing full extraction...")
+            result = await extractor.extract_article_content(google_url)
+            
+            await extractor.cleanup()
+            return resolved_url, result
+        
+        # Run the async debugging
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            resolved_url, extraction_result = loop.run_until_complete(debug_extraction())
+        finally:
+            loop.close()
+        
+        debug_info = {
+            'original_url': google_url,
+            'resolved_url': resolved_url,
+            'extraction_success': extraction_result.success,
+            'extraction_method': extraction_result.extraction_method if extraction_result.success else None,
+            'error': extraction_result.error if not extraction_result.success else None,
+            'has_image': bool(extraction_result.metadata and extraction_result.metadata.get('top_image')) if extraction_result.success else False,
+            'image_url': extraction_result.metadata.get('top_image', '') if extraction_result.success and extraction_result.metadata else '',
+            'all_images': extraction_result.metadata.get('images', []) if extraction_result.success and extraction_result.metadata else []
+        }
+        
+        print(f"Debug result: {debug_info}")
+        
+        return jsonify({
+            'debug_info': debug_info,
+            'logs': 'Check server console for detailed logs'
+        })
+        
+    except Exception as e:
+        print(f"Debug endpoint error: {e}")
+        return jsonify({'error': f'Debug failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
