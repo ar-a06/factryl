@@ -185,6 +185,13 @@
             z-index: 3;
         }
 
+        /* Enhanced hover effect for clickable article titles */
+        .result-title:hover {
+            color: #3b82f6 !important;
+            text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+            transform: translateX(2px);
+        }
+
         /* Different card sizes based on content/scores */
         .result-card.size-small {
             grid-row: span 1;
@@ -1797,6 +1804,246 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+
+        /* Article Content Modal - Match existing modal styling */
+        .article-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 10001;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .article-modal.show {
+            display: flex !important;
+        }
+
+        .article-modal-content {
+            background: linear-gradient(135deg, 
+                rgba(30,34,54,0.98) 0%, 
+                rgba(31,41,55,0.97) 30%, 
+                rgba(17,24,39,0.98) 70%, 
+                rgba(15,23,42,0.99) 100%);
+            border-radius: 16px;
+            padding: 28px;
+            max-width: min(90vw, 900px);
+            max-height: min(90vh, 800px);
+            width: auto;
+            box-shadow: 
+                0 16px 32px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25),
+                0 0 25px rgba(59, 130, 246, 0.1);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: scale(0.8) translateY(25px) rotateX(8deg);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .article-modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(59, 130, 246, 0.8) 20%, 
+                rgba(59, 130, 246, 0.8) 50%,
+                rgba(59, 130, 246, 0.8) 80%,
+                transparent 100%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        .article-modal.show .article-modal-content {
+            transform: scale(1) translateY(0) rotateX(0deg);
+        }
+
+        .article-modal-header {
+            font-weight: 500;
+            margin-bottom: 14px;
+            color: #fff;
+            text-align: center;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+            padding-bottom: 8px;
+            font-size: 0.9rem;
+            text-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+            letter-spacing: 0.2px;
+            animation: glow-blue 2s ease-in-out infinite alternate;
+            flex-shrink: 0;
+        }
+
+        @keyframes glow-blue {
+            from { text-shadow: 0 0 12px rgba(59, 130, 246, 0.3); }
+            to { text-shadow: 0 0 16px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.2); }
+        }
+
+        .article-modal-body {
+            padding: 0;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .article-modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .article-modal-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        .article-modal-content:hover .article-modal-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .article-modal-body::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        .article-modal-body::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+
+        .article-content {
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.7;
+            font-size: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+
+        .article-content h1, .article-content h2, .article-content h3 {
+            color: #fff;
+            margin: 24px 0 16px 0;
+            font-weight: 600;
+            text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .article-content h1 {
+            font-size: 1.8rem;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .article-content h2 {
+            font-size: 1.4rem;
+        }
+
+        .article-content h3 {
+            font-size: 1.2rem;
+        }
+
+        .article-content p {
+            margin: 16px 0;
+            text-align: justify;
+        }
+
+        .article-content a {
+            color: rgba(59, 130, 246, 0.8);
+            text-decoration: underline;
+            transition: color 0.2s ease;
+        }
+
+        .article-content a:hover {
+            color: rgba(59, 130, 246, 1);
+        }
+
+        .article-loading-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 40px;
+            font-size: 0.8rem;
+        }
+
+        .article-loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .article-metadata {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .article-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+            text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .article-meta-info {
+            display: flex;
+            gap: 16px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            flex-wrap: wrap;
+        }
+
+        .article-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .article-meta-item strong {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Enhanced hover effect for clickable article titles */
+        .result-title:hover {
+            color: #3b82f6 !important;
+            text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+            transform: translateX(2px);
+        }
+
+        /* Article modal action button styles */
+        .primary-action:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important;
+        }
+
+        .secondary-action:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        .read-more-link:hover {
+            color: #059669 !important;
+            transform: translateX(4px);
+        }
+
+        /* Different card sizes based on content/scores */
     </style>
 </head>
 <body>
@@ -1869,6 +2116,20 @@
                 <div class="image-loading-state">
                     <div class="image-loading-spinner"></div>
                     <span>Loading image...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Article Content Modal -->
+    <div class="article-modal" id="articleModal">
+        <div class="article-modal-content">
+            <button class="modal-close" onclick="hideArticleModal()">&times;</button>
+            <div class="article-modal-header">Article</div>
+            <div class="article-modal-body" id="articleModalContent">
+                <div class="article-loading-state">
+                    <div class="article-loading-spinner"></div>
+                    <span>Loading article content...</span>
                 </div>
             </div>
         </div>
@@ -5907,6 +6168,298 @@
             
             console.log('No Google News URLs found on the page');
             return null;
+        };
+
+        // Article Modal Functions
+        function showArticleModal(articleData) {
+            console.log('showArticleModal called with:', articleData);
+            
+            const modal = document.getElementById('articleModal');
+            const content = document.getElementById('articleModalContent');
+            const header = modal.querySelector('.article-modal-header');
+            
+            console.log('Modal elements:', { modal, content, header });
+            
+            // Update header with article title
+            header.textContent = articleData.title ? `Article: ${articleData.title.substring(0, 50)}${articleData.title.length > 50 ? '...' : ''}` : 'Article';
+            
+            // Show loading state
+            content.innerHTML = `
+                <div class="article-loading-state">
+                    <div class="article-loading-spinner"></div>
+                    <span>Loading article content...</span>
+                </div>
+            `;
+            
+            // Show modal
+            modal.classList.add('show');
+            console.log('Modal should now be visible');
+            
+            // Load and display the article content
+            loadArticleContent(articleData);
+        }
+        
+        function hideArticleModal() {
+            const modal = document.getElementById('articleModal');
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        }
+
+        // Function to load article content
+        async function loadArticleContent(articleData) {
+            console.log('Loading article content for:', articleData.title);
+            
+            try {
+                const response = await fetch('/api/article-content', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url: articleData.url,
+                        title: articleData.title
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('Successfully loaded article:', result.content_length, 'characters');
+                    
+                    const content = document.getElementById('articleModalContent');
+                    content.innerHTML = `
+                        <div class="article-content-container">
+                            <div class="article-metadata" style="margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; border-left: 4px solid #10b981;">
+                                <div style="font-size: 14px; color: rgba(255, 255, 255, 0.8); margin-bottom: 8px;">
+                                    <strong>Source:</strong> ${articleData.source || 'Unknown'}
+                                </div>
+                                ${result.author ? `
+                                <div style="font-size: 14px; color: rgba(255, 255, 255, 0.8); margin-bottom: 8px;">
+                                    <strong>Author:</strong> ${result.author}
+                                </div>
+                                ` : ''}
+                                ${result.publish_date ? `
+                                <div style="font-size: 14px; color: rgba(255, 255, 255, 0.8); margin-bottom: 8px;">
+                                    <strong>Published:</strong> ${new Date(result.publish_date).toLocaleDateString()}
+                                </div>
+                                ` : ''}
+                                <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6);">
+                                    Extracted via ${result.extraction_method || 'automated'} • ${result.content_length || 0} characters
+                                </div>
+                            </div>
+                            
+                            <div class="article-text" style="line-height: 1.6; font-size: 15px; color: rgba(255, 255, 255, 0.9);">
+                                ${result.content}
+                            </div>
+                            
+                            <div class="article-footer" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                                <a href="${articleData.url}" target="_blank" class="read-more-link" style="display: inline-flex; align-items: center; color: #10b981; text-decoration: none; font-weight: 500; transition: color 0.2s ease;">
+                                    <span>Read Full Article</span>
+                                    <svg style="width: 16px; height: 16px; margin-left: 8px;" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    console.error('Article extraction failed:', result.error);
+                    displayArticleError(articleData, result.error);
+                }
+                
+            } catch (error) {
+                console.error('Error loading article content:', error);
+                displayArticleError(articleData, error.message);
+            }
+        }
+
+        function displayArticleError(articleData, errorMessage) {
+            const content = document.getElementById('articleModalContent');
+            
+            // Try to show what we do have about the article
+            const hasContent = articleData.content && articleData.content.trim();
+            
+            content.innerHTML = `
+                <div class="article-error-container">
+                    <div class="error-message" style="margin-bottom: 20px; padding: 15px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border-left: 4px solid #ef4444;">
+                        <div style="color: rgba(239, 68, 68, 0.9); font-weight: 500; margin-bottom: 8px;">
+                            ⚠️ Unable to extract full article content
+                        </div>
+                        <div style="font-size: 14px; color: rgba(239, 68, 68, 0.7);">
+                            ${errorMessage || 'The article content could not be extracted automatically.'}
+                        </div>
+                    </div>
+                    
+                    <div class="article-metadata" style="margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                        <div style="font-size: 16px; font-weight: 500; color: rgba(255, 255, 255, 0.9); margin-bottom: 10px;">
+                            ${articleData.title}
+                        </div>
+                        <div style="font-size: 14px; color: rgba(255, 255, 255, 0.8); margin-bottom: 8px;">
+                            <strong>Source:</strong> ${articleData.source || 'Unknown'}
+                        </div>
+                        ${hasContent ? `
+                        <div style="margin-top: 15px;">
+                            <div style="font-size: 14px; color: rgba(255, 255, 255, 0.8); margin-bottom: 8px;">
+                                <strong>Preview:</strong>
+                            </div>
+                            <div style="font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, 0.7); font-style: italic;">
+                                ${articleData.content.substring(0, 300)}${articleData.content.length > 300 ? '...' : ''}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="alternative-options" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <a href="${articleData.url}" target="_blank" class="primary-action" style="flex: 1; min-width: 200px; display: inline-flex; align-items: center; justify-content: center; padding: 12px 20px; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; border-radius: 8px; font-weight: 500; transition: transform 0.2s ease;">
+                            <span>Read on Original Site</span>
+                            <svg style="width: 16px; height: 16px; margin-left: 8px;" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                            </svg>
+                        </a>
+                        
+                        <button onclick="searchRelatedArticles('${articleData.title.replace(/'/g, "\\'")}');" class="secondary-action" style="flex: 1; min-width: 160px; padding: 12px 20px; background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9); border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: background 0.2s ease;">
+                            Find Similar Articles
+                        </button>
+                    </div>
+                    
+                    <div class="extraction-info" style="margin-top: 20px; padding: 12px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; font-size: 12px; color: rgba(255, 255, 255, 0.5);">
+                        <strong>Why this happened:</strong> Some websites block automated content extraction or have complex layouts. 
+                        Opening the original article will give you the full, formatted content.
+                    </div>
+                </div>
+            `;
+        }
+
+        // Function to search for related articles
+        window.searchRelatedArticles = function(title) {
+            hideArticleModal();
+            // Extract key terms from title for search
+            const searchTerms = title
+                .replace(/[^\w\s]/g, '') // Remove special characters
+                .split(' ')
+                .filter(word => word.length > 3) // Only words longer than 3 chars
+                .slice(0, 3) // Take first 3 words
+                .join(' ');
+            
+            document.getElementById('searchInput').value = searchTerms;
+            performSearch();
+        };
+
+        // Article Modal Event Listeners
+        document.addEventListener('click', function(e) {
+            // Handle article title clicks to open article modal
+            const articleTitle = e.target.closest('.result-title');
+            if (articleTitle) {
+                console.log('Article title clicked!', articleTitle);
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Look for article data in any parent element, not just .result-card
+                let elementWithData = null;
+                let currentElement = articleTitle;
+                
+                // Traverse up the DOM tree to find any element with article data
+                while (currentElement && !elementWithData) {
+                    if (currentElement.dataset && currentElement.dataset.articleData) {
+                        elementWithData = currentElement;
+                        break;
+                    }
+                    currentElement = currentElement.parentElement;
+                }
+                
+                console.log('Found element with data:', elementWithData);
+                
+                if (elementWithData && elementWithData.dataset.articleData) {
+                    console.log('Element has article data:', elementWithData.dataset.articleData);
+                    try {
+                        const articleData = JSON.parse(elementWithData.dataset.articleData);
+                        console.log('Parsed article data:', articleData);
+                        showArticleModal(articleData);
+                    } catch (error) {
+                        console.error('Error parsing article data:', error);
+                    }
+                } else {
+                    console.log('No article data found in any parent element');
+                    
+                    // Debug: Show the DOM hierarchy
+                    let debugElement = articleTitle;
+                    let level = 0;
+                    console.log('DOM hierarchy:');
+                    while (debugElement && level < 10) {
+                        console.log(`Level ${level}: <${debugElement.tagName}> class="${debugElement.className}" id="${debugElement.id}" hasData=${!!debugElement.dataset?.articleData}`);
+                        debugElement = debugElement.parentElement;
+                        level++;
+                    }
+                }
+            }
+        });
+        
+        // Close article modal when clicking backdrop
+        document.getElementById('articleModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideArticleModal();
+            }
+        });
+        
+        // Close article modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('articleModal').classList.contains('show')) {
+                hideArticleModal();
+            }
+        });
+
+        // Test function to manually test article modal
+        window.testArticleModal = function() {
+            console.log('=== TESTING ARTICLE MODAL ===');
+            
+            // Check if modal exists
+            const modal = document.getElementById('articleModal');
+            console.log('Modal element exists:', !!modal);
+            
+            if (!modal) {
+                console.error('Article modal element not found!');
+                return;
+            }
+            
+            // Test with dummy data
+            const testData = {
+                title: 'Test Article',
+                url: 'https://example.com',
+                content: 'Test content',
+                source: 'Test Source'
+            };
+            
+            console.log('Calling showArticleModal with test data...');
+            showArticleModal(testData);
+        };
+
+        // Function to check if article titles are clickable
+        window.checkArticleTitles = function() {
+            console.log('=== CHECKING ARTICLE TITLES ===');
+            const titles = document.querySelectorAll('.result-title');
+            console.log(`Found ${titles.length} article titles`);
+            
+            titles.forEach((title, index) => {
+                console.log(`Title ${index + 1}:`, title.textContent);
+                // Look for any parent with article data
+                let parent = title.parentElement;
+                let hasData = false;
+                while (parent && !hasData) {
+                    if (parent.dataset && parent.dataset.articleData) {
+                        hasData = true;
+                        try {
+                            const data = JSON.parse(parent.dataset.articleData);
+                            console.log(`- Article URL:`, data.url);
+                        } catch (e) {
+                            console.log(`- Error parsing data:`, e);
+                        }
+                        break;
+                    }
+                    parent = parent.parentElement;
+                }
+                console.log(`- Has article data:`, hasData);
+            });
         };
     </script>
     <script>

@@ -775,6 +775,81 @@ def api_batch_article_summaries():
         traceback.print_exc()
         return jsonify({'error': f'Batch article summary generation failed: {str(e)}'}), 500
 
+@app.route('/api/article-content', methods=['POST'])
+def api_article_content():
+    """Extract full article content for modal display."""
+    try:
+        data = request.get_json()
+        
+        if not data or 'url' not in data:
+            return jsonify({'error': 'No article URL provided'}), 400
+        
+        article_url = data['url']
+        article_title = data.get('title', 'Unknown Article')
+        
+        print(f"Extracting full content for article: {article_title}")
+        print(f"Article URL: {article_url}")
+        
+        start_time = time.time()
+        
+        # Import the ArticleExtractor
+        from app.core.article_extractor import ArticleExtractor
+        
+        # Extract article content using async function
+        async def extract_article_content():
+            extractor = ArticleExtractor()
+            result = await extractor.extract_article_content(article_url)
+            return result
+        
+        # Run the extraction in a new event loop
+        def run_extraction():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(extract_article_content())
+            finally:
+                loop.close()
+        
+        extraction_result = run_extraction()
+        processing_time = time.time() - start_time
+        
+        if extraction_result.success:
+            # Clean and format content for display
+            content = extraction_result.content.strip()
+            
+            # Add basic formatting for readability
+            formatted_content = content.replace('\n\n', '</p><p>').replace('\n', '<br>')
+            if not formatted_content.startswith('<p>'):
+                formatted_content = '<p>' + formatted_content + '</p>'
+            
+            print(f"Successfully extracted {len(content)} characters")
+            
+            return jsonify({
+                'success': True,
+                'title': extraction_result.title or article_title,
+                'content': formatted_content,
+                'raw_content': content,
+                'author': extraction_result.author,
+                'publish_date': extraction_result.publish_date,
+                'extraction_method': extraction_result.extraction_method,
+                'processing_time': round(processing_time, 2),
+                'content_length': len(content),
+                'metadata': extraction_result.metadata or {}
+            })
+        else:
+            print(f"Article extraction failed: {extraction_result.error}")
+            return jsonify({
+                'success': False,
+                'error': extraction_result.error or 'Failed to extract article content',
+                'processing_time': round(processing_time, 2)
+            }), 400
+        
+    except Exception as e:
+        logger.error(f"Article content extraction error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Article content extraction failed: {str(e)}'}), 500
+
 @app.route('/api/llm-health')
 def api_llm_health():
     """Check LLM service health."""
