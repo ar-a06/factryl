@@ -5096,23 +5096,23 @@
             
             const imageModal = document.getElementById('imageModal');
             if (imageModal) {
-                console.log('🔧 Image modal found, attaching backdrop click listener');
+                console.log('Image modal found, attaching backdrop click listener');
                 
                 // Ensure the close button works
                 const imageCloseButton = imageModal.querySelector('.modal-close');
                 if (imageCloseButton) {
-                    console.log('🔧 Image modal close button found, attaching click listener');
+                    console.log('Image modal close button found, attaching click listener');
                     imageCloseButton.addEventListener('click', function(e) {
-                        console.log('🔒 Image modal close button clicked');
+                        console.log('Image modal close button clicked');
                         e.preventDefault();
                         e.stopPropagation();
                         hideImageModal();
                     });
                 } else {
-                    console.error('🔧 Close button not found in image modal');
+                    console.error('Close button not found in image modal');
                 }
             } else {
-                console.error('🔧 Image modal not found during initialization');
+                console.error('Image modal not found during initialization');
             }
         });
 
