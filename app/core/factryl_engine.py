@@ -530,52 +530,70 @@ class FactrylEngine:
             print(f"Fallback summary: '{fallback}' ({len(fallback)} chars)")
             return fallback
     
-    async def generate_article_summary(self, article: Dict[str, Any], max_length: int = 120) -> str:
+    async def generate_article_summary(self, article: Dict[str, Any], max_length: int = 300) -> str:
         """Generate a concise summary for a single article with smart source management."""
         try:
             # Always try to generate actual content summaries, not just titles
             content = article.get('content', '')
             title = article.get('title', '')
             
-            # Detect generic/poor quality content early
-            if self._is_generic_content(content):
-                print(f"Generic content detected (length: {len(content)}), creating enhanced title summary")
-                return self._create_enhanced_title_summary(title, article.get('source', ''), max_length)
+            # Detect generic/poor quality content early but don't give up immediately
+            content_is_generic = self._is_generic_content(content)
+            if content_is_generic:
+                print(f"Generic content detected (length: {len(content)}), will try harder extraction")
             
-            # First, try to enhance the article content if it's short
+            # Force article extraction for short content or generic content
             enhanced_article = article
-            if (self.article_extractor and 
+            should_extract = (
+                self.article_extractor and 
                 not article.get('metadata', {}).get('content_enhanced') and
-                len(content) < 300):
+                (len(content) < 500 or content_is_generic)  # Increased threshold to 500 chars
+            )
+            
+            if should_extract:
                 try:
+                    print(f"Attempting article extraction for better content (current: {len(content)} chars)")
                     enhanced_article = await self.enhance_single_article(article)
-                    content = enhanced_article.get('content', '')
-                    print(f"Enhanced article content: {len(content)} chars")
+                    enhanced_content = enhanced_article.get('content', '')
                     
-                    # Check if enhanced content is still generic
-                    if self._is_generic_content(content):
-                        print("Enhanced content still generic, using title summary")
-                        return self._create_enhanced_title_summary(title, article.get('source', ''), max_length)
+                    # Use enhanced content if it's better quality or longer
+                    if len(enhanced_content) > len(content) and not self._is_generic_content(enhanced_content):
+                        content = enhanced_content
+                        article = enhanced_article  # Use the enhanced article for all processing
+                        print(f"Successfully enhanced article content: {len(content)} chars")
+                    elif not self._is_generic_content(enhanced_content) and len(enhanced_content) > 20:  # Lowered threshold
+                        # Even if not longer, use it if it's higher quality
+                        content = enhanced_content
+                        article = enhanced_article
+                        print(f"Using enhanced content for better quality: {len(content)} chars")
+                    else:
+                        print(f"Enhanced content not significantly better, keeping original")
                         
                 except Exception as e:
-                    print(f"Single article enhancement failed: {e}")
+                    print(f"Article enhancement failed: {e}")
             
-            # Try LLM summarization first if available and content is substantial
+            # Try LLM summarization with enhanced article data
             if (self.ollama_analyzer and 
                 self.ollama_analyzer.is_service_available() and 
-                len(content) > 80):  # Lowered threshold
+                len(content) > 5):  # Even lower threshold to ensure summaries are attempted
                 try:
-                    summary = self.ollama_analyzer.generate_article_summary(enhanced_article, max_length)
-                    if summary and len(summary.strip()) > 50 and not self._is_generic_content(summary):
+                    # Add URL info to help LLM understand context when content is poor
+                    article_with_url = enhanced_article.copy()
+                    if article.get('url') or article.get('link'):
+                        url = article.get('url') or article.get('link', '')
+                        article_with_url['url_context'] = self._extract_context_from_url(url)
+                    
+                    summary = self.ollama_analyzer.generate_article_summary(article_with_url, max_length)
+                    if summary and len(summary.strip()) > 20:  # More lenient validation but ensure some content
                         print(f"LLM summary generated: '{summary[:50]}...' ({len(summary)} chars)")
                         return summary
                     else:
-                        print(f"LLM summary quality insufficient, using enhanced fallback")
+                        print(f"LLM summary too short, using enhanced fallback")
                 except Exception as e:
                     print(f"Ollama article summary failed: {e}")
             
             # Intelligent content extraction from article content
-            if len(content) > 50:  # Lowered threshold for better coverage
+            if len(content) > 20:  # Lowered threshold for better coverage
                 # Clean the content
                 clean_content = self._clean_html(content)
                 
@@ -584,9 +602,9 @@ class FactrylEngine:
                 
                 # Look for the most informative sentences (skip very short ones)
                 best_sentences = []
-                for i, sentence in enumerate(sentences[:5]):  # Check first 5 sentences
+                for i, sentence in enumerate(sentences[:8]):  # Check first 8 sentences for more content
                     sentence = sentence.strip()
-                    if (len(sentence) > 20 and  # Lowered minimum length
+                    if (len(sentence) > 15 and  # Lowered minimum length
                         not sentence.lower().startswith(('click', 'read more', 'subscribe', 'sign up', 'follow')) and
                         not sentence.endswith('...') and
                         '©' not in sentence and
@@ -598,15 +616,20 @@ class FactrylEngine:
                     primary_sentence = best_sentences[0]
                     
                     # If we have multiple good sentences, try to combine them intelligently
-                    if len(best_sentences) > 1 and len(primary_sentence) < max_length * 1.5:  # More generous threshold
+                    if len(best_sentences) > 1 and len(primary_sentence) < max_length * 2:  # More generous threshold
                         secondary_sentence = best_sentences[1]
                         combined = f"{primary_sentence}. {secondary_sentence}"
                         
-                        if len(combined) <= max_length * 2:  # Allow longer combined summaries
+                        # Add third sentence if available and not too long
+                        if len(best_sentences) > 2 and len(combined) < max_length * 2.5:
+                            tertiary_sentence = best_sentences[2]
+                            combined = f"{combined}. {tertiary_sentence}"
+                        
+                        if len(combined) <= max_length * 3:  # Allow longer combined summaries
                             return combined
                         else:
                             # Use just the primary sentence, but be more generous with length
-                            if len(primary_sentence) > max_length * 1.5:  # Only truncate if much longer
+                            if len(primary_sentence) > max_length * 2:  # Only truncate if much longer
                                 truncated = primary_sentence[:max_length * 2 - 10]  # More generous truncation
                                 last_space = truncated.rfind(' ')
                                 if last_space > len(truncated) * 0.8:  # Find a good word boundary
@@ -615,7 +638,7 @@ class FactrylEngine:
                             return primary_sentence
                     else:
                         # Use the primary sentence, be more generous with truncation
-                        if len(primary_sentence) > max_length * 1.5:  # Only truncate if much longer
+                        if len(primary_sentence) > max_length * 2:  # Only truncate if much longer
                             truncated = primary_sentence[:max_length * 2 - 10]  # More generous truncation
                             last_space = truncated.rfind(' ')
                             if last_space > len(truncated) * 0.8:  # Find a good word boundary
@@ -625,21 +648,21 @@ class FactrylEngine:
                 
                 # If no good sentences, create an intelligent word-based summary
                 words = clean_content.split()
-                if len(words) > 10:  # Lowered threshold
+                if len(words) > 5:  # Lowered threshold
                     # Take meaningful portion of content - be more generous
-                    word_count = min(max_length // 4, len(words))  # Estimate ~4 chars per word (more generous)
+                    word_count = min(max_length // 3, len(words))  # Estimate ~3 chars per word (more generous)
                     summary_words = words[:word_count]
                     summary = ' '.join(summary_words)
                     
                     # Ensure it ends at a sentence boundary if possible
                     if '.' in summary:
                         last_period = summary.rfind('.')
-                        if last_period > len(summary) * 0.4:  # More lenient threshold
+                        if last_period > len(summary) * 0.3:  # More lenient threshold
                             summary = summary[:last_period + 1]
                     
                     # Only truncate if significantly longer than desired
-                    if len(summary) > max_length * 2:
-                        summary = summary[:max_length * 2 - 10] + "..."
+                    if len(summary) > max_length * 3:
+                        summary = summary[:max_length * 3 - 10] + "..."
                     
                     return summary
             
@@ -728,6 +751,60 @@ class FactrylEngine:
         text = re.sub(r'^\s*\w+\s*-\s*', '', text)
         
         return text.strip()
+    
+    def _extract_context_from_url(self, url: str) -> str:
+        """Extract meaningful context from URL structure to help with content understanding."""
+        if not url:
+            return ""
+        
+        try:
+            import re
+            
+            # Extract date information from URL
+            date_patterns = [
+                r'/(\d{4})/(\d{1,2})/(\d{1,2})/',  # /2024/05/31/
+                r'/(\d{4})-(\d{2})-(\d{2})/',      # /2024-05-31/
+                r'/(\d{8})/',                      # /20240531/
+            ]
+            
+            date_info = ""
+            for pattern in date_patterns:
+                match = re.search(pattern, url)
+                if match:
+                    if len(match.groups()) == 3:
+                        year, month, day = match.groups()
+                        date_info = f"Published: {year}-{month.zfill(2)}-{day.zfill(2)}"
+                    elif len(match.groups()) == 1:
+                        date_str = match.group(1)
+                        if len(date_str) == 8:
+                            year, month, day = date_str[:4], date_str[4:6], date_str[6:8]
+                            date_info = f"Published: {year}-{month}-{day}"
+                    break
+            
+            # Extract topic/category from URL path
+            path_segments = [seg for seg in url.split('/') if seg and not seg.startswith('http')]
+            topic_keywords = []
+            
+            for segment in path_segments:
+                # Clean segment and extract meaningful keywords
+                clean_segment = re.sub(r'[-_]', ' ', segment).lower()
+                # Filter out common URL patterns
+                if (len(clean_segment) > 3 and 
+                    not clean_segment.isdigit() and
+                    clean_segment not in ['www', 'com', 'org', 'net', 'html', 'php', 'asp']):
+                    topic_keywords.append(clean_segment)
+            
+            context_parts = []
+            if date_info:
+                context_parts.append(date_info)
+            if topic_keywords:
+                context_parts.append(f"Topics: {', '.join(topic_keywords[:3])}")
+            
+            return "; ".join(context_parts)
+            
+        except Exception as e:
+            print(f"URL context extraction failed: {e}")
+            return ""
     
     def _generate_llm_summary(self, articles: List[Dict[str, Any]], query: str, max_length: int) -> str:
         """Generate summary using LLM analyzer with proper prompting."""
@@ -1041,7 +1118,7 @@ Generate the intelligence summary now:
         # Convert to lowercase for case-insensitive comparison
         lower_content = content.lower()
         
-        # List of generic indicators from Google News rate limiting
+        # Expanded list of generic indicators that we need to catch
         generic_indicators = [
             'products shown on this page',
             'not available in all countries',
@@ -1053,20 +1130,66 @@ Generate the intelligence summary now:
             'limited information available',
             'click here to read more',
             'read full article',
-            'continue reading'
+            'continue reading',
+            'explore',
+            'official site',
+            'merchandise',
+            'updates on',
+            'latest projects',
+            'get the latest',
+            'follow us',
+            'download',
+            'available on ios',
+            'sign up',
+            'subscribe',
+            'newsletter',
+            'privacy policy',
+            'terms of service',
+            'cookie policy'
         ]
         
         # Check if content contains any generic indicators
+        generic_count = 0
         for indicator in generic_indicators:
             if indicator in lower_content:
+                generic_count += 1
+                print(f"Found generic indicator: '{indicator}' in content")
+        
+        # If we find multiple generic indicators, it's definitely generic content
+        if generic_count >= 3:  # Increased from 2 to 3
+            print(f"Content rejected: {generic_count} generic indicators found")
+            return True
+        
+        # Single strong indicators that should immediately reject content
+        strong_indicators = [
+            'products shown on this page',
+            'not available in all countries',
+            'support.google.com',
+            'visit support.google'
+        ]
+        
+        for indicator in strong_indicators:
+            if indicator in lower_content:
+                print(f"Content rejected: Strong generic indicator '{indicator}' found")
                 return True
         
         # Check if content is too short to be meaningful
-        if len(content.strip()) < 50:
+        if len(content.strip()) < 30:  # Lowered from 50 to 30
             return True
             
         # Check if content looks like HTML fragments
         if content.strip().startswith('<') or 'href=' in content:
+            return True
+        
+        # Check word diversity - generic content often has low diversity
+        words = content.split()
+        if len(words) < 5:  # Lowered from 10 to 5
+            return True
+            
+        unique_words = set(word.lower() for word in words)
+        diversity_ratio = len(unique_words) / len(words)
+        if diversity_ratio < 0.3:  # Lowered from 0.5 to 0.3
+            print(f"Content rejected: Low word diversity ({diversity_ratio:.2f})")
             return True
             
         return False

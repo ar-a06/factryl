@@ -55,13 +55,13 @@ class OllamaAnalyzer:
         """Check if Ollama service is available."""
         return self.is_available
     
-    def generate_article_summary(self, article: Dict[str, Any], max_words: int = 50) -> str:
+    def generate_article_summary(self, article: Dict[str, Any], max_words: int = 300) -> str:
         """
         Generate a concise summary for a single article to display in article tiles.
         
         Args:
             article: Article data containing title, content, source, etc.
-            max_words: Maximum words for the summary (default 50 for tiles)
+            max_words: Maximum words for the summary (default 300 for comprehensive summaries)
         
         Returns:
             A concise, engaging summary highlighting key information
@@ -73,32 +73,65 @@ class OllamaAnalyzer:
             title = article.get('title', '').strip()
             content = article.get('content', '').strip()
             source = article.get('source', 'Unknown').title()
+            url_context = article.get('url_context', '')
             
-            # Create focused prompt for article tile summaries
+            # Debug logging to see what content we're working with
+            logger.info(f"Article summary request - Title: {title[:100]}...")
+            logger.info(f"Article summary request - Content length: {len(content)} chars")
+            logger.info(f"Article summary request - Content preview: {content[:200]}...")
+            logger.info(f"Article summary request - Source: {source}")
+            
+            # Create comprehensive article analysis prompt
             prompt = f"""
-Create a concise, engaging summary for this article that will appear in a news tile.
+You are an expert news analyst creating a comprehensive summary that captures ALL the key points from an article. Your goal is to extract every important detail and present a complete picture of the story.
 
-ARTICLE DETAILS:
+ARTICLE DATA:
 Title: {title}
 Source: {source}
-Content: {content[:500]}
+Content: {content[:3000]}
+{f"URL Context: {url_context}" if url_context else ""}
 
-REQUIREMENTS:
-- Maximum {max_words} words
-- Focus on the most important/interesting aspect
-- Make it engaging and informative
-- Use present tense
-- No speculation or opinion
-- Start with action or key fact
-- Suitable for quick scanning
+YOUR MISSION:
+Create a comprehensive {max_words}-word summary that highlights ALL the key points, important details, and significant information from this article. Think of this as a complete briefing that covers everything a reader needs to know.
 
-EXAMPLE FORMATS:
-- "Scientists discover new treatment for..."
-- "Company announces major breakthrough in..."
-- "Government implements new policy affecting..."
-- "Research reveals surprising finding about..."
+COMPREHENSIVE ANALYSIS FRAMEWORK:
+1. MAIN EVENT/STORY: What is the primary news or development?
+2. KEY PLAYERS: Who are the main people, organizations, or entities involved?
+3. IMPORTANT DETAILS: What specific facts, numbers, dates, locations are mentioned?
+4. BACKGROUND CONTEXT: What led to this situation or why is it happening now?
+5. IMPACT & CONSEQUENCES: What are the effects, implications, or outcomes?
+6. FUTURE DEVELOPMENTS: What happens next or what to expect?
 
-Generate the summary:
+QUALITY STANDARDS:
+✓ Include ALL significant facts mentioned in the article
+✓ Preserve specific numbers, dates, names, and locations
+✓ Explain the "who, what, when, where, why, and how"
+✓ Connect different aspects of the story together
+✓ Highlight both immediate and long-term implications
+✓ Use clear, informative language that flows well
+
+CRITICAL INSTRUCTIONS:
+🚫 REJECT GENERIC CONTENT: If you see phrases like "Products shown on this page are not available in all countries" or "Visit support.google.com" or "explore official site for merchandise," these are NOT real article content - they are generic website navigation text.
+
+✅ WHEN CONTENT IS GENERIC: Use the title to infer what the real story is about and create a factual, journalistic summary based on what that type of news story would logically contain.
+
+📰 EXTRACT REAL NEWS: Look for actual news facts in any content provided. Focus on:
+- Specific events that happened
+- People involved and their actions  
+- Dates, locations, numbers, and details
+- Consequences and implications
+- What readers actually need to know
+
+🎯 CREATE COMPREHENSIVE SUMMARIES: Include every important detail, connect different aspects of the story, and provide complete context.
+
+⚠️ IMPORTANT: If the content appears to be just a headline or very short, DO NOT create a generic summary. Instead, analyze what the headline suggests and create a factual, journalistic summary that explains what this type of news story would typically contain based on the headline and source.
+
+🔍 CONTENT ANALYSIS: 
+- If content is short (< 100 chars), focus on the title and create a detailed explanation of what this news story is about
+- If content is medium length (100-500 chars), extract all key facts and expand on them
+- If content is long (> 500 chars), provide a comprehensive summary covering all major points
+
+Write your comprehensive news summary covering all key points:
 """
 
             response = ollama.chat(
@@ -119,11 +152,11 @@ Generate the summary:
             # Clean and validate summary
             summary = self._clean_summary(summary, max_words)
             
-            if len(summary.split()) <= max_words and len(summary) > 20:
+            if len(summary) > 10:  # Much more lenient validation - just check if we have content
                 logger.info(f"Generated LLM summary: {summary[:50]}...")
                 return summary
             else:
-                logger.warning(f"LLM summary failed validation, using fallback")
+                logger.warning(f"LLM summary too short, using fallback")
                 return self._fallback_summary(article, max_words)
                 
         except Exception as e:
@@ -162,34 +195,43 @@ Title: {title}
 Content: {content[:300]}...
 """)
             
-            # Create comprehensive intelligence analysis prompt
+            # Create enhanced news analysis prompt
             prompt = f"""
-You are an intelligence analyst creating a comprehensive report on: "{query}"
+You are a senior journalist and news analyst creating a comprehensive overview of current developments regarding: "{query}"
 
-SOURCE MATERIALS:
+AVAILABLE SOURCES:
 {chr(10).join(article_summaries)}
 
-ANALYSIS REQUIREMENTS:
-Create a {max_words}-word intelligence briefing with:
+YOUR MISSION:
+Write a {max_words}-word comprehensive news analysis that synthesizes these sources into a clear, engaging overview that helps readers understand the full picture.
 
-1. EXECUTIVE SUMMARY (2-3 sentences on key findings)
-2. CURRENT SITUATION (What's happening now)
-3. KEY DEVELOPMENTS (Major recent events/trends)
-4. SOURCE ASSESSMENT (Brief note on {len(sources)} sources)
-5. IMPLICATIONS (What this means)
-6. OUTLOOK (What to expect)
+STRUCTURE YOUR ANALYSIS:
+1. **LEAD** (25-30 words): Start with the most significant current development or trend
+2. **CONTEXT** (40-50 words): Provide essential background and recent developments  
+3. **KEY FINDINGS** (80-100 words): Synthesize the most important information from your sources
+4. **MULTIPLE PERSPECTIVES** (40-50 words): Include different viewpoints or aspects covered
+5. **SIGNIFICANCE** (30-40 words): Explain why this matters to readers
+6. **CURRENT STATUS** (30-40 words): Where things stand now and immediate next steps
 
-STYLE GUIDELINES:
-- Professional intelligence briefing tone
-- Use present tense for current events
-- Be analytical, not speculative
-- Focus on verifiable information
-- No HTML tags or special formatting
-- Exactly {max_words} words
+WRITING EXCELLENCE:
+✓ Use compelling, journalistic language that engages readers
+✓ Include specific facts, figures, names, and timelines from the sources
+✓ Weave sources together naturally - don't just list them separately  
+✓ Show connections and patterns across different reports
+✓ Make complex topics accessible to general audiences
+✓ Use active voice and varied sentence structure
+✓ Be authoritative but not academic or dry
 
-Begin with "Intelligence Analysis: {query}."
+CREDIBILITY STANDARDS:
+- Only include information supported by your sources
+- Distinguish between confirmed facts and ongoing developments  
+- Note when sources disagree or provide different perspectives
+- Avoid speculation beyond what sources reasonably suggest
+- Don't manufacture quotes or specific details not in sources
 
-Generate the intelligence report:
+Begin your analysis with: "Current developments regarding {query}..."
+
+Write your comprehensive {max_words}-word news analysis:
 """
 
             response = ollama.chat(
@@ -242,28 +284,38 @@ Generate the intelligence report:
         return summary
     
     def _fallback_summary(self, article: Dict[str, Any], max_words: int) -> str:
-        """Generate fallback summary when LLM is unavailable."""
+        """Generate intelligent fallback summary when LLM is unavailable."""
         title = article.get('title', '').strip()
         content = article.get('content', '').strip()
+        source = article.get('source', 'Unknown').title()
         
         if not title:
             return "Article content available for review."
         
-        # Use title as base, add content if very short title
-        if len(title.split()) < 8 and content:
-            # Extract first sentence from content
-            sentences = content.split('.')
-            first_sentence = sentences[0].strip() if sentences else ""
-            
-            if first_sentence and len(first_sentence.split()) < max_words:
-                return f"{title.rstrip('.')}. {first_sentence}."
+        # Create intelligent summary based on title analysis
+        return self._create_intelligent_title_summary(title, source, max_words)
+    
+    def _create_intelligent_title_summary(self, title: str, source: str, max_words: int) -> str:
+        """Create an intelligent summary based on the title and source."""
+        title_lower = title.lower()
         
-        # Just return cleaned title
-        words = title.split()
-        if len(words) > max_words:
-            return ' '.join(words[:max_words]) + '...'
-        
-        return title
+        # Analyze title for key entities and context
+        if any(name in title_lower for name in ['taylor swift', 'swift']):
+            # Remove all generic or promotional fallback summaries for Taylor Swift
+            return f"{title} - {source}"
+        elif any(name in title_lower for name in ['blake lively', 'lively']):
+            return f"{title} - {source}"
+        elif any(term in title_lower for term in ['bts', 'justin baldoni']):
+            return f"{title} - {source}"
+        # Generic but professional fallback
+        else:
+            words = title.split()
+            key_entities = [word for word in words if len(word) > 3 and word[0].isupper()]
+            if key_entities:
+                main_entity = key_entities[0]
+                return f"{title} - {source}"
+            else:
+                return f"{title} - {source}"
     
     def _fallback_intelligence_report(self, articles: List[Dict[str, Any]], query: str, max_words: int) -> str:
         """Generate fallback intelligence report when LLM is unavailable."""

@@ -134,7 +134,7 @@
         .results-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            grid-auto-rows: minmax(200px, auto);
+            grid-auto-rows: auto !important;
             gap: 20px;
             margin-top: 20px;
             position: relative;
@@ -144,12 +144,13 @@
         .result-card {
             background: #fff;
             border-radius: 12px;
-            padding: 24px;
+            padding: 24px !important;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             position: relative;
             z-index: 2;
             overflow: hidden; /* Add this for background image containment */
+            margin-bottom: 0 !important;
         }
 
         /* Add support for background images in article cards */
@@ -269,6 +270,11 @@
             font-size: 15px;
             color: #000;
             margin-bottom: 16px;
+            height: auto !important;
+            max-height: none !important;
+            min-height: 40px;
+            overflow: visible !important;
+            display: block;
         }
 
         .definition-content {
@@ -2064,6 +2070,43 @@
         }
 
         /* Different card sizes based on content/scores */
+        .grid-item {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+            min-height: 240px;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .grid-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            border-color: #d1d5db;
+        }
+
+        .featured-tile {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+            min-height: 240px;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .featured-tile:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            border-color: #d1d5db;
+        }
     </style>
 </head>
 <body>
@@ -2441,21 +2484,21 @@
                                 </div>
                             </div>
                             
-                            <!-- LLM Summary Section -->
-                            <div class="llm-summary-container" style="margin-bottom: 0px; min-height: 50px;">
-                                <div class="llm-summary-header" style="display: flex; align-items: center; margin-bottom: 0px;">
-                                    <div class="llm-status" style="margin-left: auto; font-size: 12px; color: #6c757d;">
-                                        <span class="llm-loading" style="display: none;">
-                                            <span style="display: inline-block; width: 12px; height: 12px; border: 2px solid #f3f3f3; border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 6px;"></span>
-                                            Generating...
-                                        </span>
-                                        <span class="llm-ready" style="color: #28a745;">●</span>
-                                    </div>
-                                </div>
-                                <div class="llm-summary-content" style="font-size: 14px; line-height: 1.6; color: #000; min-height: 40px; margin-top: 8px;">
-                                    Generating smart summary...
-                                </div>
-                            </div>
+                                        <!-- LLM Summary Section -->
+            <div class="llm-summary-container" style="margin-bottom: 0px; min-height: 100px; height: auto;">
+                <div class="llm-summary-header" style="display: flex; align-items: center; margin-bottom: 0px;">
+                    <div class="llm-status" style="margin-left: auto; font-size: 12px; color: #6c757d;">
+                        <span class="llm-loading" style="display: none;">
+                            <span style="display: inline-block; width: 12px; height: 12px; border: 2px solid #f3f3f3; border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 6px;"></span>
+                            Generating...
+                        </span>
+                        <span class="llm-ready" style="color: #28a745;">●</span>
+                    </div>
+                </div>
+                <div class="llm-summary-content" style="font-size: 14px; line-height: 1.6; color: #000; min-height: 80px; max-height: none; overflow: visible; margin-top: 8px; height: auto;">
+                    Generating smart summary...
+                </div>
+            </div>
                             
                         `;
                         
@@ -2674,28 +2717,20 @@
                             }
                         }
                     } else {
-                        // Apply fallback background
+                        // Do not apply fallback background - leave tile without background image
                         const definitionTile = document.querySelector('.definition-tile');
                         if (definitionTile) {
-                            if (hasDefinition) {
-                                displayTranslucentFallbackBackground(definitionTile, query);
-                            } else {
-                                displayFullOpacityFallbackBackground(definitionTile, query);
-                            }
+                            console.log('No image found for definition tile, leaving without background');
                         }
                     }
                 }
                 
             } catch (error) {
                 console.error('Image preload error:', error);
-                // Apply fallback background
+                // Do not apply fallback background - leave tile without background image
                 const definitionTile = document.querySelector('.definition-tile');
                 if (definitionTile) {
-                    if (hasDefinition) {
-                        displayTranslucentFallbackBackground(definitionTile, query);
-                    } else {
-                        displayFullOpacityFallbackBackground(definitionTile, query);
-                    }
+                    console.log('No image found for definition tile, leaving without background');
                 }
             }
         }
@@ -2735,11 +2770,13 @@
                         imageCache.set(query, imageData);
                         displayImageAsBackground(tileElement, imageData, query);
                     } else {
-                        displayFallbackBackground(tileElement, query);
+                        // Do not display fallback - leave tile without background image
+                        console.log('No image found, leaving tile without background');
                     }
                 } else {
                     if (currentImageQuery === query) {
-                        displayFallbackBackground(tileElement, query);
+                        // Do not display fallback - leave tile without background image
+                        console.log('No image found, leaving tile without background');
                     }
                 }
                 
@@ -2839,75 +2876,8 @@
             }
         }
         
-        function displayFallbackBackground(tileElement, query) {
-            if (currentImageQuery !== query) return;
-            
-            // Remove overlays if they exist
-            const translucentOverlay = tileElement.querySelector('.translucent-overlay');
-            if (translucentOverlay) {
-                translucentOverlay.remove();
-            }
-            
-            const fullOpacityOverlay = tileElement.querySelector('.full-opacity-overlay');
-            if (fullOpacityOverlay) {
-                fullOpacityOverlay.remove();
-            }
-            
-            // Hide definition content during hover
-            const definitionContent = tileElement.querySelector('.definition-content');
-            if (definitionContent) {
-                definitionContent.style.display = 'none';
-            }
-            
-            // Generate cottage core gradient backgrounds at full visibility
-            const colors = [
-                { 
-                    start: 'rgba(120, 113, 108, 0.8)', 
-                    mid: 'rgba(168, 162, 158, 0.6)', 
-                    end: 'rgba(196, 181, 173, 0.4)' 
-                },
-                { 
-                    start: 'rgba(156, 163, 175, 0.8)', 
-                    mid: 'rgba(209, 213, 219, 0.6)', 
-                    end: 'rgba(243, 244, 246, 0.4)' 
-                },
-                { 
-                    start: 'rgba(100, 116, 139, 0.8)', 
-                    mid: 'rgba(148, 163, 184, 0.6)', 
-                    end: 'rgba(203, 213, 225, 0.4)' 
-                },
-                { 
-                    start: 'rgba(107, 114, 128, 0.8)', 
-                    mid: 'rgba(156, 163, 175, 0.6)', 
-                    end: 'rgba(229, 231, 235, 0.4)' 
-                }
-            ];
-            const colorPair = colors[query.length % colors.length];
-            
-            tileElement.style.background = `linear-gradient(135deg, ${colorPair.start} 0%, ${colorPair.mid} 50%, ${colorPair.end} 100%)`;
-            tileElement.style.transition = 'all 0.3s ease';
-            
-            // Style text for translucent fallback
-            const translucentDefContent = tileElement.querySelector('.definition-content');
-            if (translucentDefContent) {
-                translucentDefContent.style.position = 'relative';
-                translucentDefContent.style.zIndex = '2';
-                translucentDefContent.style.color = '#2d2d2d';
-                translucentDefContent.style.textShadow = '0 1px 2px rgba(255,255,255,0.8)';
-                translucentDefContent.style.fontWeight = '500';
-                translucentDefContent.style.letterSpacing = '0.01em';
-            }
-            
-            const heading = tileElement.querySelector('h3');
-            if (heading) {
-                heading.style.position = 'relative';
-                heading.style.zIndex = '2';
-                heading.style.color = '#1f2937';
-                heading.style.textShadow = '0 1px 3px rgba(255,255,255,0.9)';
-                heading.style.fontWeight = '700';
-                heading.style.letterSpacing = '0.02em';
-            }
-        }
+        // REMOVED: displayFallbackBackground function - no longer using fallback gradient backgrounds
+        // Only scraped images from actual articles are displayed
 
         function displayTranslucentBackground(tileElement, imageData, query) {
             console.log(`Applying translucent background for '${query}'`);
@@ -3036,123 +3006,8 @@
             }
         }
 
-        function displayTranslucentFallbackBackground(tileElement, query) {
-            console.log(`Applying translucent fallback background for '${query}'`);
-            
-            // Remove full opacity overlay if it exists
-            const fullOpacityOverlay = tileElement.querySelector('.full-opacity-overlay');
-            if (fullOpacityOverlay) {
-                fullOpacityOverlay.remove();
-            }
-            
-            // Generate cottage core gradient backgrounds with translucency
-            const colors = [
-                { 
-                    start: 'rgba(250, 249, 246, 0.95)', 
-                    mid: 'rgba(245, 245, 244, 0.90)', 
-                    end: 'rgba(238, 236, 235, 0.85)' 
-                },
-                { 
-                    start: 'rgba(243, 244, 246, 0.95)', 
-                    mid: 'rgba(229, 231, 235, 0.90)', 
-                    end: 'rgba(209, 213, 219, 0.85)' 
-                },
-                { 
-                    start: 'rgba(241, 245, 249, 0.95)', 
-                    mid: 'rgba(226, 232, 240, 0.90)', 
-                    end: 'rgba(203, 213, 225, 0.85)' 
-                },
-                { 
-                    start: 'rgba(249, 250, 251, 0.95)', 
-                    mid: 'rgba(243, 244, 246, 0.90)', 
-                    end: 'rgba(229, 231, 235, 0.85)' 
-                }
-            ];
-            const colorPair = colors[query.length % colors.length];
-            
-            tileElement.style.background = `linear-gradient(135deg, ${colorPair.start} 0%, ${colorPair.mid} 50%, ${colorPair.end} 100%)`;
-            tileElement.style.transition = 'all 0.3s ease';
-            
-            // Style text for translucent fallback
-            const translucentDefContent = tileElement.querySelector('.definition-content');
-            if (translucentDefContent) {
-                translucentDefContent.style.position = 'relative';
-                translucentDefContent.style.zIndex = '2';
-                translucentDefContent.style.color = '#2d2d2d';
-                translucentDefContent.style.textShadow = '0 1px 2px rgba(255,255,255,0.8)';
-                translucentDefContent.style.fontWeight = '500';
-                translucentDefContent.style.letterSpacing = '0.01em';
-            }
-            
-            const heading = tileElement.querySelector('h3');
-            if (heading) {
-                heading.style.position = 'relative';
-                heading.style.zIndex = '2';
-                heading.style.color = '#1f2937';
-                heading.style.textShadow = '0 1px 3px rgba(255,255,255,0.9)';
-                heading.style.fontWeight = '700';
-                heading.style.letterSpacing = '0.02em';
-            }
-        }
-
-        function displayFullOpacityFallbackBackground(tileElement, query) {
-            console.log(`Applying full opacity fallback background for '${query}' (no definition)`);
-            
-            // Remove translucent overlay if it exists
-            const translucentOverlay = tileElement.querySelector('.translucent-overlay');
-            if (translucentOverlay) {
-                translucentOverlay.remove();
-            }
-            
-            // Generate cottage core gradient backgrounds at full opacity
-            const colors = [
-                { 
-                    start: 'rgba(120, 113, 108, 1.0)', 
-                    mid: 'rgba(168, 162, 158, 1.0)', 
-                    end: 'rgba(196, 181, 173, 1.0)' 
-                },
-                { 
-                    start: 'rgba(156, 163, 175, 1.0)', 
-                    mid: 'rgba(209, 213, 219, 1.0)', 
-                    end: 'rgba(243, 244, 246, 1.0)' 
-                },
-                { 
-                    start: 'rgba(100, 116, 139, 1.0)', 
-                    mid: 'rgba(148, 163, 184, 1.0)', 
-                    end: 'rgba(203, 213, 225, 1.0)' 
-                },
-                { 
-                    start: 'rgba(107, 114, 128, 1.0)', 
-                    mid: 'rgba(156, 163, 175, 1.0)', 
-                    end: 'rgba(229, 231, 235, 1.0)' 
-                }
-            ];
-            const colorPair = colors[query.length % colors.length];
-            
-            tileElement.style.background = `linear-gradient(135deg, ${colorPair.start} 0%, ${colorPair.mid} 50%, ${colorPair.end} 100%)`;
-            tileElement.style.transition = 'all 0.3s ease';
-            
-            // Style text for full opacity fallback
-            const fullOpacityDefContent = tileElement.querySelector('.definition-content');
-            if (fullOpacityDefContent) {
-                fullOpacityDefContent.style.position = 'relative';
-                fullOpacityDefContent.style.zIndex = '2';
-                fullOpacityDefContent.style.color = '#ffffff';
-                fullOpacityDefContent.style.textShadow = '0 2px 4px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.3)';
-                fullOpacityDefContent.style.fontWeight = '600';
-                fullOpacityDefContent.style.letterSpacing = '0.01em';
-            }
-            
-            const heading = tileElement.querySelector('h3');
-            if (heading) {
-                heading.style.position = 'relative';
-                heading.style.zIndex = '2';
-                heading.style.color = '#ffffff';
-                heading.style.textShadow = '0 2px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.4)';
-                heading.style.fontWeight = '700';
-                heading.style.letterSpacing = '0.02em';
-            }
-        }
+        // REMOVED: displayTranslucentFallbackBackground and displayFullOpacityFallbackBackground functions
+        // No longer using fallback gradient backgrounds - only scraped images from actual articles are displayed
 
         // Function to limit definition text to fit tile height
         function limitDefinitionText(text, maxChars = 800) {
@@ -3217,7 +3072,7 @@
                 summarySection.style.cssText = `
                     display: grid;
                     grid-template-columns: 30% 70%;
-                    grid-template-rows: 280px 280px;
+                    grid-template-rows: auto auto;
                     gap: 20px;
                     margin-bottom: 20px;
                     width: 100%;
@@ -3229,8 +3084,8 @@
                 definitionTile.style.cssText = `
                     grid-column: 1;
                     grid-row: 1;
-                    min-height: 280px;
-                    max-height: 280px;
+                    min-height: 180px;
+                    height: auto;
                 `;
                 definitionTile.innerHTML = `
                     <div class="definition-loading">
@@ -3245,8 +3100,8 @@
                 intelligenceTile.style.cssText = `
                     grid-column: 2;
                     grid-row: 1;
-                    min-height: 280px;
-                    max-height: 280px;
+                    min-height: 180px;
+                    height: auto;
                 `;
                 intelligenceTile.innerHTML = `
                     <h3>Intelligence Summary</h3>
@@ -3263,9 +3118,13 @@
                 featuredArticle.style.cssText = `
                     grid-column: 1;
                     grid-row: 2;
-                    min-height: 280px;
-                    max-height: 280px;
-                    overflow: hidden;
+                    min-height: 180px;
+                    height: auto;
+                    max-height: none;
+                    overflow: visible;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
                 `;
                 featuredArticle.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 12px; color: #6b7280; justify-content: center; height: 280px;">
@@ -3280,8 +3139,8 @@
                 videoTile.style.cssText = `
                     grid-column: 2;
                     grid-row: 2;
-                    min-height: 280px;
-                    max-height: 280px;
+                    min-height: 180px;
+                    height: auto;
                 `;
 
                 // Create bottom row container for equal-width tiles
@@ -3292,20 +3151,20 @@
                     display: grid;
                     grid-template-columns: 1fr 1fr;
                     gap: 20px;
-                    min-height: 280px;
-                    max-height: 280px;
+                    min-height: 180px;
+                    height: auto;
                 `;
 
                 // Reset featured article and video tile to fit in bottom container
                 featuredArticle.style.cssText = `
-                    min-height: 280px;
-                    max-height: 280px;
-                    overflow: hidden;
+                    min-height: 180px;
+                    height: auto;
+                    overflow: visible;
                 `;
 
                 videoTile.style.cssText = `
-                    min-height: 280px;
-                    max-height: 280px;
+                    min-height: 180px;
+                    height: auto;
                 `;
 
                 videoTile.innerHTML = `
@@ -4353,24 +4212,23 @@
                     console.log('Featured tile not found');
                     return;
                 }
-                
-                const loadingElement = featuredTile.querySelector('.llm-loading');
-                const readyElement = featuredTile.querySelector('.llm-ready');
-                const summaryContent = featuredTile.querySelector('.llm-summary-content');
-                
-                // Show loading state
-                if (loadingElement) loadingElement.style.display = 'inline-block';
-                if (readyElement) readyElement.style.display = 'none';
-                
+                // Set dynamic sizing for summary container
+                const summaryContainer = featuredTile.querySelector('.llm-summary-container');
+                if (summaryContainer) {
+                    summaryContainer.style.maxHeight = 'none';
+                    summaryContainer.style.overflow = 'visible';
+                }
+                // Try to load and apply the best background image
+                if (article.url && article.title) {
+                    await loadArticleBackgroundImage(featuredTile, article.url, article.title);
+                }
                 // Prepare article data
                 const articleData = {
                     title: article.title || 'Untitled',
                     content: article.content || 'No content available',
                     source: article.source || 'Unknown'
                 };
-                
                 console.log(`Generating summary for featured article: ${articleData.title.substring(0, 50)}...`);
-                
                 // Call the API to generate summary
                 const response = await fetch('/api/article-summary', {
                     method: 'POST',
@@ -4379,50 +4237,40 @@
                     },
                     body: JSON.stringify({
                         article: articleData,
-                        max_words: 150  // Increased word limit for better summaries
+                        max_words: 350  // Allow longer, more engaging summaries
                     })
                 });
-                
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
-                
                 const data = await response.json();
-                
-                // Check if the summary is generic/poor quality and enhance it
-                let finalSummary = data.summary;
-                if (isGenericContent(finalSummary)) {
-                    finalSummary = createEnhancedSummary(article.title, article.source, 150);
-                    console.log(`Generic content detected for article ${index + 1}, using enhanced title summary`);
-                }
-                
+                // Always display the full summary without truncation, allow for multi-sentence
+                let finalSummary = data.summary || 'Summary not available';
                 // Update the summary content
+                const summaryContent = featuredTile.querySelector('.llm-summary-content');
                 if (summaryContent) {
                     summaryContent.innerHTML = `
-                        <span style="font-style: normal; color: #000; line-height: 1.4;">${finalSummary}</span>
+                        <span style="font-style: normal; color: #000; line-height: 1.6; font-size: 16px;">${finalSummary}</span>
                     `;
                 }
-                
                 // Update status indicators
+                const loadingElement = featuredTile.querySelector('.llm-loading');
+                const readyElement = featuredTile.querySelector('.llm-ready');
                 if (loadingElement) loadingElement.style.display = 'none';
                 if (readyElement) {
                     readyElement.style.display = 'inline';
                     readyElement.style.color = data.llm_used ? '#28a745' : '#6c757d';
                     readyElement.title = data.llm_used ? 'AI-powered summary' : 'Smart analysis summary';
                 }
-                
-                console.log(`Summary generated for featured article: ${data.summary.substring(0, 50)}...`);
-                
+                console.log(`Summary generated for featured article: ${data.summary ? data.summary.substring(0, 50) : 'None'}...`);
             } catch (error) {
                 console.error('Failed to generate summary for featured article:', error);
-                
                 // Find the featured tile and show error state
                 const featuredTile = document.getElementById(tileId);
                 if (featuredTile) {
                     const loadingElement = featuredTile.querySelector('.llm-loading');
                     const readyElement = featuredTile.querySelector('.llm-ready');
                     const summaryContent = featuredTile.querySelector('.llm-summary-content');
-                    
                     if (loadingElement) loadingElement.style.display = 'none';
                     if (readyElement) {
                         readyElement.style.display = 'inline';
@@ -4430,10 +4278,9 @@
                         readyElement.innerHTML = '!';
                         readyElement.title = 'Summary generation failed';
                     }
-                    
                     if (summaryContent) {
                         // Create enhanced fallback based on title
-                        const enhancedSummary = createEnhancedSummary(article.title, article.source, 150);
+                        const enhancedSummary = createEnhancedSummary(article.title, article.source, 200);
                         summaryContent.innerHTML = `
                             <span style="color: #000; line-height: 1.4;">${enhancedSummary}</span>
                         `;
@@ -4485,7 +4332,7 @@
                     },
                     body: JSON.stringify({
                         article: articleData,
-                        max_words: 150  // Increased word limit for better summaries
+                        max_words: 300  // Comprehensive summaries with all key points
                     })
                 });
                 
@@ -5970,8 +5817,15 @@
                         // Update the modal with the article image
                         const modal = document.getElementById('imageModal');
                         if (modal.classList.contains('show')) {
+                            let sourceText = 'Article Image';
+                            if (imageData.extraction_method === 'google_fallback') {
+                                sourceText = `Google Search for Article`;
+                            } else if (imageData.extraction_method) {
+                                sourceText = `Article Image (${imageData.extraction_method})`;
+                            }
+                            
                             showImageModal(imageData.image_url, articleTitle, {
-                                source: `Article Image (${imageData.extraction_method})`,
+                                source: sourceText,
                                 source_url: articleUrl
                             });
                         }
@@ -5987,6 +5841,57 @@
                 console.error('Article image load error:', error);
                 return false;
             }
+        }
+
+        // Function to validate image URLs client-side to avoid stock/promotional images
+        function isAcceptableImageForNews(imageUrl, articleTitle, extractionMethod = '') {
+            const url = imageUrl.toLowerCase();
+            const title = articleTitle.toLowerCase();
+
+            // If this is a fallback image, allow it unless it's from a hard-blocked domain
+            if (extractionMethod === 'google_fallback' || extractionMethod === 'google_images_fallback') {
+                const hardBlocked = ['shutterstock', 'gettyimages', 'istockphoto', 'alamy', 'depositphotos', 'dreamstime', 'stocksy'];
+                if (hardBlocked.some(domain => url.includes(domain))) {
+                    console.log('Rejected: Hard-blocked stock photo domain detected (fallback)');
+                    return false;
+                }
+                return true;
+            }
+
+            // Block obvious stock photo domains for real article images
+            const stockDomains = [
+                'shutterstock', 'gettyimages', 'istockphoto', 'alamy',
+                'depositphotos', 'dreamstime', 'stocksy'
+            ];
+            if (stockDomains.some(domain => url.includes(domain))) {
+                console.log('Rejected: Stock photo domain detected');
+                return false;
+            }
+
+            // For celebrity news, be very strict about generic promotional content
+            const celebrityNames = ['taylor swift', 'blake lively', 'justin bieber'];
+            const isCelebrityNews = celebrityNames.some(name => title.includes(name));
+
+            if (isCelebrityNews) {
+                const newsKeywords = [
+                    'restraining order', 'stalker', 'lawsuit', 'court', 'legal',
+                    'arrest', 'charges', 'trial', 'divorce', 'pregnancy',
+                    'album', 'tour', 'concert', 'Grammy', 'award'
+                ];
+                const hasNewsContext = newsKeywords.some(keyword => title.includes(keyword));
+                if (hasNewsContext) {
+                    const promotionalPatterns = [
+                        'headshot', 'portrait', 'photoshoot', 'red-carpet',
+                        'professional', 'studio', 'glamour', 'fashion',
+                        'promotional', 'promo', 'publicity', 'campaign'
+                    ];
+                    if (promotionalPatterns.some(pattern => url.includes(pattern))) {
+                        console.log('Rejected: Celebrity promotional image for news article');
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
         // Function to load and apply article background images
@@ -6011,6 +5916,12 @@
                     
                     if (imageData.success && imageData.image_url) {
                         console.log('Found article background image:', imageData.image_url);
+                        
+                        // Client-side validation to reject stock/promotional images
+                        if (!isAcceptableImageForNews(imageData.image_url, articleTitle, imageData.extraction_method || '')) {
+                            console.log('Image rejected by client-side validation');
+                            return false;
+                        }
                         
                         // Apply the image as background using the same method as definition tiles
                         card.style.backgroundImage = `url("${imageData.image_url}")`;
@@ -6083,6 +5994,10 @@
                 }
                 
                 console.log('No article background image found for:', articleTitle);
+                // Remove any existing background styling to ensure clean tile
+                card.style.backgroundImage = '';
+                card.style.background = '';
+                card.classList.remove('has-image');
                 return false;
                 
             } catch (error) {

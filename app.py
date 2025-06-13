@@ -499,83 +499,12 @@ def api_image_search():
                                     return jsonify(image_data)
                     except:
                         continue
-            
+        
         except Exception as e:
             print(f"Bing Images search failed: {e}")
         
-        # Fallback: Improved placeholder with topic-specific colors
-        topic_colors = {
-            'food': '28a745',
-            'animal': 'fd7e14', 
-            'nature': '20c997',
-            'technology': '007bff',
-            'sports': 'dc3545',
-            'music': '6f42c1',
-            'science': '17a2b8'
-        }
-        
-        # Determine topic and color
-        query_lower = query.lower()
-        color = '6c757d'  # default gray
-        
-        for topic, topic_color in topic_colors.items():
-            if any(word in query_lower for word in [topic, 'food', 'eat', 'fruit', 'vegetable'] if topic == 'food'):
-                color = topic_color
-                break
-            elif any(word in query_lower for word in ['animal', 'dog', 'cat', 'bird', 'fish'] if topic == 'animal'):
-                color = topic_color
-                break
-            elif any(word in query_lower for word in ['tree', 'plant', 'flower', 'water', 'rain'] if topic == 'nature'):
-                color = topic_color
-                break
-        
-        # Use multiple fallback services
-        fallback_services = [
-            f"https://placehold.co/400x300/{color}/ffffff?text={quote_plus(query.upper())}",
-            f"https://dummyimage.com/400x300/{color}/ffffff&text={quote_plus(query.upper())}",
-            f"https://picsum.photos/400/300?random={hash(query) % 1000}&blur=1"
-        ]
-        
-        # Try each fallback service
-        for fallback_url in fallback_services:
-            try:
-                response = requests.head(fallback_url, timeout=2)
-                if response.status_code == 200:
-                    image_data = {
-                        'image_url': fallback_url,
-                        'source': 'placeholder',
-                        'description': f"Placeholder image for '{query}'",
-                        'width': 400,
-                        'height': 300
-                    }
-                    
-                    print(f"Using fallback placeholder: {fallback_url[:50]}...")
-                    return jsonify(image_data)
-            except:
-                continue
-        
-        # Final simple fallback - data URL (always works)
-        import base64
-        
-        # Create a simple colored rectangle as base64 data URL
-        svg_content = f'''<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
-            <rect width="400" height="300" fill="#{color}"/>
-            <text x="200" y="150" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle" dy=".3em">{query.upper()}</text>
-        </svg>'''
-        
-        svg_base64 = base64.b64encode(svg_content.encode()).decode()
-        data_url = f"data:image/svg+xml;base64,{svg_base64}"
-        
-        image_data = {
-            'image_url': data_url,
-            'source': 'svg_fallback',
-            'description': f"Generated SVG for '{query}'",
-            'width': 400,
-            'height': 300
-        }
-        
-        print(f"Using SVG fallback for '{query}'")
-        return jsonify(image_data)
+        # If no real image was found, return failure
+        return jsonify({'success': False, 'error': 'No image found for query'})
         
     except Exception as e:
         logger.error(f"Image search API error: {e}")
@@ -657,11 +586,84 @@ def api_article_image():
         
         # Fallback to generic image search if no article image found
         print(f"No article image found, falling back to generic search for: {article_title}")
-        return jsonify({
-            'success': False,
-            'error': 'No image found in article',
-            'fallback_available': True
-        })
+        from flask import current_app
+        with current_app.test_request_context():
+            # Use the user-entered search keyword if available, otherwise fall back to article title
+            search_query = data.get('search_query', '').strip()
+            image_search_query = search_query or article_title.strip() or article_url.strip()
+            print(f"[IMAGE FALLBACK] Querying image search for: '{image_search_query}' (search_query='{search_query}')")
+            # Try Google Images first
+            image_search_data = {'query': image_search_query}
+            image_search_response = api_image_search()
+            if isinstance(image_search_response, tuple):
+                image_search_response = image_search_response[0]
+            image_search_json = image_search_response.get_json()
+            if image_search_json and image_search_json.get('image_url'):
+                print(f"[IMAGE FALLBACK] Google Images success: {image_search_json['image_url']}")
+                return jsonify({
+                    'success': True,
+                    'image_url': image_search_json['image_url'],
+                    'all_images': [image_search_json['image_url']],
+                    'title': article_title,
+                    'source': 'google_images_fallback',
+                    'extraction_method': 'google_fallback'
+                })
+            else:
+                print(f"[IMAGE FALLBACK] Google Images failed for: '{image_search_query}'")
+                # Try DuckDuckGo manually
+                from urllib.parse import quote_plus
+                import requests
+                ddg_api_url = f"https://duckduckgo.com/i.js?q={quote_plus(image_search_query)}&o=json&p=1&s=0&u=bing&f=,,,,,&l=us-en"
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                try:
+                    ddg_response = requests.get(ddg_api_url, headers=headers, timeout=5)
+                    if ddg_response.status_code == 200:
+                        data = ddg_response.json()
+                        if 'results' in data and len(data['results']) > 0:
+                            for result in data['results'][:3]:
+                                img_url = result.get('image')
+                                if img_url:
+                                    print(f"[IMAGE FALLBACK] DuckDuckGo success: {img_url}")
+                                    return jsonify({
+                                        'success': True,
+                                        'image_url': img_url,
+                                        'all_images': [img_url],
+                                        'title': article_title,
+                                        'source': 'duckduckgo_fallback',
+                                        'extraction_method': 'duckduckgo_fallback'
+                                    })
+                    print(f"[IMAGE FALLBACK] DuckDuckGo failed for: '{image_search_query}'")
+                except Exception as e:
+                    print(f"[IMAGE FALLBACK] DuckDuckGo error: {e}")
+                # Try Bing manually
+                try:
+                    bing_url = f"https://www.bing.com/images/search?q={quote_plus(image_search_query)}&form=HDRSC2&first=1&tsc=ImageBasicHover"
+                    bing_response = requests.get(bing_url, headers=headers, timeout=5)
+                    if bing_response.status_code == 200:
+                        import re
+                        content = bing_response.text
+                        bing_pattern = r'\"murl\":\"([^\"]+)\"'
+                        matches = re.findall(bing_pattern, content)
+                        for match in matches[:3]:
+                            img_url = match.replace('\\u002f', '/').replace('\\/','/')
+                            print(f"[IMAGE FALLBACK] Bing success: {img_url}")
+                            return jsonify({
+                                'success': True,
+                                'image_url': img_url,
+                                'all_images': [img_url],
+                                'title': article_title,
+                                'source': 'bing_fallback',
+                                'extraction_method': 'bing_fallback'
+                            })
+                    print(f"[IMAGE FALLBACK] Bing failed for: '{image_search_query}'")
+                except Exception as e:
+                    print(f"[IMAGE FALLBACK] Bing error: {e}")
+                print(f"[IMAGE FALLBACK] All fallback image searches failed for: '{image_search_query}'")
+                return jsonify({
+                    'success': False,
+                    'error': 'No image found in article or via search',
+                    'fallback_available': False
+                })
         
     except Exception as e:
         print(f"Error extracting article image: {e}")
