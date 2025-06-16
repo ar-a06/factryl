@@ -5752,7 +5752,7 @@
                     },
                     body: JSON.stringify({ query: query })
                 });
-                
+
                 if (response.ok) {
                     const imageData = await response.json();
                     
@@ -5894,114 +5894,129 @@
             return true;
         }
 
+                // Helper function to validate image URL
+        function isValidImageUrl(url, title) {
+            if (!url) return false;
+            if (url.startsWith('data:')) return false;
+            if (!url.startsWith('http')) return false;
+            if (url.includes('undefined') || url.includes('null')) return false;
+            return true;
+        }
+
+        // Helper function to apply styles to card elements
+        function styleCardElements(card) {
+            // Style content elements
+            const contentElements = card.querySelectorAll('.result-title, .result-description, .result-content, p:not(.result-meta), .summary-content');
+            contentElements.forEach(element => {
+                element.style.position = 'relative';
+                element.style.zIndex = '2';
+                element.style.color = '#000';
+                element.style.textShadow = '0 1px 2px rgba(255,255,255,0.8)';
+                element.style.fontWeight = '500';
+                element.style.letterSpacing = '0.01em';
+            });
+
+            // Style headings
+            const headings = card.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            headings.forEach(heading => {
+                if (!heading.closest('.result-meta') && !heading.textContent.includes('AM') && !heading.textContent.includes('PM')) {
+                    heading.style.position = 'relative';
+                    heading.style.zIndex = '2';
+                    heading.style.color = '#000';
+                    heading.style.textShadow = '0 1px 3px rgba(255,255,255,0.9)';
+                    heading.style.fontWeight = '700';
+                    heading.style.letterSpacing = '0.02em';
+                }
+            });
+        }
+
         // Function to load and apply article background images
         async function loadArticleBackgroundImage(card, articleUrl, articleTitle) {
+            if (!card || !articleUrl || !articleTitle) {
+                console.error('Missing required parameters');
+                return false;
+            }
+
             try {
-                console.log('Loading background image for article:', articleTitle);
-                console.log('Article URL:', articleUrl);
-                
-                const response = await fetch('/api/article-image', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        url: articleUrl,
-                        title: articleTitle 
-                    })
-                });
-                
-                if (response.ok) {
-                    const imageData = await response.json();
-                    
-                    if (imageData.success && imageData.image_url) {
-                        console.log('Found article background image:', imageData.image_url);
-                        
-                        // Client-side validation to reject stock/promotional images
-                        if (!isAcceptableImageForNews(imageData.image_url, articleTitle, imageData.extraction_method || '')) {
-                            console.log('Image rejected by client-side validation');
-                            return false;
-                        }
-                        
-                        // Apply the image as background using the same method as definition tiles
-                        card.style.backgroundImage = `url("${imageData.image_url}")`;
-                        card.style.backgroundSize = 'cover';
-                        card.style.backgroundPosition = 'center';
-                        card.style.backgroundRepeat = 'no-repeat';
-                        card.style.transition = 'all 0.3s ease';
-                        
-                        // Apply the same translucent overlay as definition tiles
-                        const existingOverlay = card.querySelector('.translucent-overlay');
-                        if (!existingOverlay) {
-                            const overlay = document.createElement('div');
-                            overlay.className = 'translucent-overlay';
-                            overlay.style.cssText = `
-                                position: absolute;
-                                top: 0;
-                                left: 0;
-                                right: 0;
-                                bottom: 0;
-                                background: linear-gradient(
-                                    135deg, 
-                                    rgba(250, 249, 246, 0.75) 0%, 
-                                    rgba(245, 245, 244, 0.70) 25%,
-                                    rgba(238, 236, 235, 0.65) 50%, 
-                                    rgba(231, 229, 228, 0.60) 75%,
-                                    rgba(220, 216, 214, 0.55) 100%
-                                );
-                                backdrop-filter: blur(0.5px);
-                                pointer-events: none;
-                                z-index: 1;
-                                border-radius: inherit;
-                            `;
-                            card.appendChild(overlay);
-                        }
-                        
-                        // Ensure card text is styled properly for translucent background
-                        card.style.position = 'relative';
-                        
-                        // Style content text elements in the card for visibility (but exclude UI elements)
-                        const contentElements = card.querySelectorAll('.result-title, .result-description, .result-content, p:not(.result-meta), .summary-content');
-                        contentElements.forEach(element => {
-                            element.style.position = 'relative';
-                            element.style.zIndex = '2';
-                            element.style.color = '#000';
-                            element.style.textShadow = '0 1px 2px rgba(255,255,255,0.8)';
-                            element.style.fontWeight = '500';
-                            element.style.letterSpacing = '0.01em';
-                        });
-                        
-                        // Style article titles/headings specifically
-                        const articleTitles = card.querySelectorAll('h1, h2, h3, h4, h5, h6');
-                        articleTitles.forEach(heading => {
-                            // Skip if this is a timestamp or meta element
-                            if (heading.closest('.result-meta') || heading.textContent.includes('AM') || heading.textContent.includes('PM')) {
-                                return;
-                            }
-                            
-                            heading.style.position = 'relative';
-                            heading.style.zIndex = '2';
-                            heading.style.color = '#000';
-                            heading.style.textShadow = '0 1px 3px rgba(255,255,255,0.9)';
-                            heading.style.fontWeight = '700';
-                            heading.style.letterSpacing = '0.02em';
-                        });
-                        
-                        card.classList.add('has-image');
-                        
-                        return true;
-                    }
-                }
-                
-                console.log('No article background image found for:', articleTitle);
-                // Remove any existing background styling to ensure clean tile
+                // Clear existing background
                 card.style.backgroundImage = '';
                 card.style.background = '';
                 card.classList.remove('has-image');
-                return false;
+
+                // Request image from API
+                const response = await fetch('/api/article-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        url: articleUrl, 
+                        title: articleTitle,
+                        fallback_to_google: true 
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Image API request failed');
+                }
+
+                const data = await response.json();
                 
+                if (!data.image_url || !isValidImageUrl(data.image_url, articleTitle)) {
+                    return false;
+                }
+
+                // Block generic Google images
+                const blockedPatterns = [
+                    'googlecast.png',
+                    'about-products-socialshare.png',
+                    'gstatic.com/marketing-cms',
+                    'google.com/images',
+                    'google.com/logos'
+                ];
+
+                if (blockedPatterns.some(pattern => data.image_url.toLowerCase().includes(pattern))) {
+                    console.log('Blocked generic Google image:', data.image_url);
+                    return false;
+                }
+
+                // Apply image
+                card.style.backgroundImage = `url("${data.image_url}")`;
+                card.style.backgroundSize = 'cover';
+                card.style.backgroundPosition = 'center';
+                card.style.backgroundRepeat = 'no-repeat';
+                card.style.transition = 'all 0.3s ease';
+                card.style.position = 'relative';
+                card.classList.add('has-image');
+
+                // Add overlay
+                let overlay = card.querySelector('.translucent-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.className = 'translucent-overlay';
+                    overlay.style.cssText = `
+                        position: absolute;
+                        top: 0; left: 0; right: 0; bottom: 0;
+                        background: linear-gradient(
+                            135deg, 
+                            rgba(250, 249, 246, 0.75) 0%, 
+                            rgba(245, 245, 244, 0.70) 25%,
+                            rgba(238, 236, 235, 0.65) 50%,
+                            rgba(231, 229, 228, 0.60) 75%,
+                            rgba(220, 216, 214, 0.55) 100%
+                        );
+                        backdrop-filter: blur(0.5px);
+                        pointer-events: none;
+                        z-index: 1;
+                        border-radius: inherit;
+                    `;
+                    card.appendChild(overlay);
+                }
+
+                // Style card elements
+                styleCardElements(card);
+
+                return true;
             } catch (error) {
-                console.error('Article background image load error:', error);
+                console.error('Error loading article background:', error);
                 return false;
             }
         }
@@ -6020,29 +6035,49 @@
                 for (const card of alternativeCards) {
                     console.log('Card dataset:', card.dataset);
                 }
+                return;
             }
-            
-            for (const card of cards) {
+
+            // Create an array of promises for parallel loading
+            const loadingPromises = Array.from(cards).map(async (card, index) => {
                 try {
-                    console.log('Processing card:', card);
+                    console.log(`Processing card ${index + 1}/${cards.length}`);
                     const articleData = JSON.parse(card.dataset.articleData);
-                    console.log('Article data:', articleData);
                     
                     const articleUrl = articleData.url;
                     const articleTitle = articleData.title;
                     
                     if (articleUrl && articleTitle) {
-                        console.log(`Loading background for: ${articleTitle} - ${articleUrl}`);
-                        // Add a small delay between requests to avoid overwhelming the server
-                        await new Promise(resolve => setTimeout(resolve, 200));
+                        console.log(`Queuing background load for: ${articleTitle}`);
+                        // Add a small stagger to prevent exact simultaneous requests
+                        await new Promise(resolve => setTimeout(resolve, index * 50));
                         const success = await loadArticleBackgroundImage(card, articleUrl, articleTitle);
                         console.log(`Background load result for "${articleTitle}": ${success ? 'SUCCESS' : 'FAILED'}`);
+                        return { title: articleTitle, success };
                     } else {
                         console.log('Missing URL or title for article:', articleData);
+                        return { title: 'Unknown', success: false };
                     }
                 } catch (error) {
                     console.error('Error processing article background image:', error);
+                    return { title: 'Error', success: false };
                 }
+            });
+
+            try {
+                // Wait for all images to load in parallel
+                const results = await Promise.all(loadingPromises);
+                
+                // Log summary
+                const successCount = results.filter(r => r.success).length;
+                console.log(`
+                    Background loading complete:
+                    - Total cards: ${cards.length}
+                    - Successfully loaded: ${successCount}
+                    - Failed: ${cards.length - successCount}
+                `);
+            } catch (error) {
+                console.error('Error during parallel image loading:', error);
             }
             
             console.log('Finished loading background images for article cards');
@@ -6116,14 +6151,14 @@
                         if (success) {
                             console.log('Background applied. Current style:', card.style.backgroundImage);
                             console.log('Has has-image class:', card.classList.contains('has-image'));
-                        }
-                    } else {
+                                    }
+                                } else {
                         console.log('No URL available for this article');
-                    }
-                } else {
+                                }
+                            } else {
                     console.log('No article data found for this card');
-                }
-            } else {
+                            }
+                        } else {
                 console.log('Card index out of range');
             }
         };
@@ -6218,12 +6253,12 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
+                    body: JSON.stringify({ 
                         url: articleData.url,
                         title: articleData.title
                     })
                 });
-                
+
                 const result = await response.json();
                 
                 if (result.success) {
@@ -6378,7 +6413,7 @@
                         const articleData = JSON.parse(elementWithData.dataset.articleData);
                         console.log('Parsed article data:', articleData);
                         showArticleModal(articleData);
-                    } catch (error) {
+            } catch (error) {
                         console.error('Error parsing article data:', error);
                     }
                 } else {
