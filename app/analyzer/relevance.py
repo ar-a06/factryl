@@ -25,6 +25,24 @@ class RelevanceAnalyzer:
         self.boost_title = self.config.get('boost_title', 2.0)
         self.boost_keywords = self.config.get('boost_keywords', 1.5)
         
+        # Known entities that should be treated as exact matches
+        self.known_entities = {
+            'bts': {
+                'aliases': ['방탄소년단', 'bangtan boys', 'bangtantv', 'bangtan sonyeondan'],
+                'related_terms': ['k-pop', 'kpop', 'korean', 'idol', 'army'],
+                'members': [
+                    'rm', 'kim nam-joon', 'kim namjoon',
+                    'jin', 'kim seok-jin', 'kim seokjin',
+                    'suga', 'min yoon-gi', 'min yoongi', 'agust d',
+                    'j-hope', 'jung ho-seok', 'jung hoseok',
+                    'jimin', 'park ji-min', 'park jimin',
+                    'v', 'kim tae-hyung', 'kim taehyung',
+                    'jungkook', 'jeon jung-kook', 'jeon jungkook'
+                ]
+            }
+            # Add more entities as needed
+        }
+        
         # Common stop words to filter out
         self.stop_words = {
             'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
@@ -34,6 +52,25 @@ class RelevanceAnalyzer:
             'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him',
             'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their'
         }
+    
+    def _is_known_entity(self, query: str) -> Optional[Dict[str, Any]]:
+        """Check if query matches any known entity."""
+        query_lower = query.lower().strip()
+        
+        for entity, info in self.known_entities.items():
+            # Check exact match
+            if query_lower == entity:
+                return info
+            
+            # Check aliases
+            if query_lower in info['aliases']:
+                return info
+            
+            # Check members (for group entities)
+            if 'members' in info and query_lower in info['members']:
+                return info
+        
+        return None
     
     async def analyze(self, content: Dict[str, Any], query: str) -> Dict[str, Any]:
         """
@@ -59,6 +96,9 @@ class RelevanceAnalyzer:
                 'explanation': 'No query provided'
             }
         
+        # Check if query is a known entity
+        entity_info = self._is_known_entity(query)
+        
         # Extract text fields
         title = content.get('title', '')
         text_content = content.get('content', '')
@@ -81,6 +121,17 @@ class RelevanceAnalyzer:
         tfidf_score = self._calculate_tfidf_score(query_tokens, content_tokens)
         semantic_score = self._calculate_semantic_score(query, full_text)
         
+        # Apply entity-specific scoring if applicable
+        if entity_info:
+            # Check for exact entity matches
+            entity_score = self._calculate_entity_score(query, full_text, entity_info)
+            
+            # Boost scores if entity-related terms are found
+            if entity_score > 0:
+                keyword_score *= 1.5
+                title_score *= 1.5
+                semantic_score = max(semantic_score, entity_score)
+        
         # Combine scores with weights
         final_score = (
             keyword_score * 0.3 +
@@ -88,6 +139,10 @@ class RelevanceAnalyzer:
             tfidf_score * 0.2 +
             semantic_score * 0.2
         )
+        
+        # If it's a known entity but score is low, likely unrelated
+        if entity_info and final_score < 0.4:
+            final_score *= 0.5  # Penalize likely unrelated content
         
         # Find specific matches
         matches = self._find_matches(query_tokens, content_tokens)
@@ -204,6 +259,33 @@ class RelevanceAnalyzer:
             if keyword_density > 0.05:
                 explanation += f", high keyword density ({keyword_density:.1%})"
             return explanation
+    
+    def _calculate_entity_score(self, query: str, content: str, entity_info: Dict[str, Any]) -> float:
+        """Calculate relevance score for known entities."""
+        content_lower = content.lower()
+        score = 0.0
+        
+        # Check for exact matches of entity name and aliases
+        if query.lower() in content_lower:
+            score += 0.6
+        for alias in entity_info['aliases']:
+            if alias in content_lower:
+                score += 0.4
+                break
+        
+        # Check for related terms
+        for term in entity_info['related_terms']:
+            if term in content_lower:
+                score += 0.2
+        
+        # Check for member names if applicable
+        if 'members' in entity_info:
+            for member in entity_info['members']:
+                if member in content_lower:
+                    score += 0.3
+                    break
+        
+        return min(score, 1.0)
     
     async def analyze_batch(self, contents: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
         """

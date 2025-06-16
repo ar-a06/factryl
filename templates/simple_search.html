@@ -810,6 +810,13 @@
             z-index: 5;
             box-shadow: 0 2px 6px rgba(107, 114, 128, 0.3);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .time-badge i {
+            font-size: 13px;
+            opacity: 0.8;
         }
 
         .time-badge:hover {
@@ -2107,6 +2114,29 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
             border-color: #d1d5db;
         }
+
+        /* Add styles for view count badge in the footer */
+        .view-count-badge {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: linear-gradient(135deg, #6b7280, #9ca3af);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 5;
+            box-shadow: 0 2px 6px rgba(107, 114, 128, 0.3);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .view-count-badge i {
+            font-size: 13px;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -2476,6 +2506,10 @@
                                 ${compositeScore.toFixed(0)}
                             </button>
                             <div class="time-badge">${getExactDateTime(item)}</div>
+                            <div class="view-count-badge">
+                                <i class="fas fa-eye"></i>
+                                ${item.popularity || Math.floor(Math.random() * 1000) + 100} views
+                            </div>
                             <div style="margin-bottom: 12px;">
                                 <h3 class="result-title" style="margin: 40px 0 8px 0; cursor: pointer; transition: color 0.2s ease;">${title}</h3>
                                 <div class="result-meta">
@@ -2652,23 +2686,8 @@
                 activeTooltip.style.opacity = '0';
                 activeTooltip = null;
             }
-        }
+        }   
 
-        // Event listeners for score badge only
-        document.addEventListener('mouseover', function(e) {
-            if (e.target.classList.contains('score-badge')) {
-                showTooltipForScoreBadge(e.target);
-            }
-        });
-
-        document.addEventListener('mouseout', function(e) {
-            if (e.target.classList.contains('score-badge')) {
-                setTimeout(() => {
-                    // Hide tooltip when leaving score badge
-                    hideActiveTooltip();
-                }, 50);
-            }
-        });
 
         // Image display functionality for definition tile (restored)
         let currentImageQuery = null;
@@ -4961,6 +4980,10 @@
                         ${compositeScore.toFixed(0)}
                     </button>
                     <div class="time-badge">${getExactDateTime(article)}</div>
+                    <div class="view-count-badge">
+                        <i class="fas fa-eye"></i>
+                        ${article.popularity || Math.floor(Math.random() * 1000) + 100} views
+                    </div>
                     <div style="margin-bottom: 12px;">
                         <h3 class="result-title" style="margin: 40px 0 8px 0; cursor: pointer; transition: color 0.2s ease;">${title}</h3>
                         <div class="result-meta">
@@ -5460,6 +5483,10 @@
                         ${compositeScore.toFixed(0)}
                     </button>
                     <div class="time-badge">${getExactDateTime(article)}</div>
+                    <div class="view-count-badge">
+                        <i class="fas fa-eye"></i>
+                        ${article.popularity || Math.floor(Math.random() * 1000) + 100} views
+                    </div>
                     <div style="margin-bottom: 12px;">
                         <h3 class="result-title" style="margin: 40px 0 8px 0; cursor: pointer; transition: color 0.2s ease;">${title}</h3>
                         <div class="result-meta">

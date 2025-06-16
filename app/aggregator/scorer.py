@@ -18,16 +18,23 @@ class ContentScorer:
             config: Configuration dictionary with scoring settings
         """
         self.config = config or {}
-        self.sort_by = self.config.get('sort_by', 'relevance')
-        self.recency_weight = self.config.get('recency_weight', 0.2)
+        self.min_score = self.config.get('min_score', 0.1)
         self.relevance_weight = self.config.get('relevance_weight', 0.4)
-        self.credibility_weight = self.config.get('credibility_weight', 0.3)
-        self.engagement_weight = self.config.get('engagement_weight', 0.1)
+        self.credibility_weight = self.config.get('credibility_weight', 0.2)
+        self.recency_weight = self.config.get('recency_weight', 0.2)
+        self.engagement_weight = self.config.get('engagement_weight', 0.2)
+        self.sort_by = self.config.get('sort_by', 'composite')
         
         # Scoring parameters
         self.max_age_days = self.config.get('max_age_days', 30)
-        self.min_score = self.config.get('min_score', 0.0)
         self.boost_factors = self.config.get('boost_factors', {})
+        
+        # Known entity types for specialized scoring
+        self.entity_types = {
+            'k-pop': ['bts', 'blackpink', 'twice', 'exo', 'nct', 'iu', 'psy'],
+            'tech': ['apple', 'google', 'microsoft', 'meta', 'amazon'],
+            'sports': ['nba', 'nfl', 'mlb', 'fifa', 'uefa']
+        }
     
     def score(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -75,16 +82,45 @@ class ContentScorer:
         recency_score = self._calculate_recency_score(item)
         engagement_score = self._calculate_engagement_score(item)
         
+        # Detect if content is about a known entity type
+        entity_type = self._detect_entity_type(item)
+        
+        # Apply entity-specific scoring adjustments
+        if entity_type:
+            # For entity-focused content, boost relevance importance
+            relevance_weight = self.relevance_weight * 1.5
+            credibility_weight = self.credibility_weight * 0.8
+            recency_weight = self.recency_weight
+            engagement_weight = self.engagement_weight * 0.7
+            
+            # Normalize weights
+            total_weight = relevance_weight + credibility_weight + recency_weight + engagement_weight
+            relevance_weight /= total_weight
+            credibility_weight /= total_weight
+            recency_weight /= total_weight
+            engagement_weight /= total_weight
+        else:
+            # Use default weights
+            relevance_weight = self.relevance_weight
+            credibility_weight = self.credibility_weight
+            recency_weight = self.recency_weight
+            engagement_weight = self.engagement_weight
+        
+        # Calculate composite score with appropriate weights
+        composite_score = (
+            relevance_score * relevance_weight +
+            credibility_score * credibility_weight +
+            recency_score * recency_weight +
+            engagement_score * engagement_weight
+        )
+        
         # Apply source-specific boosts
         source_boost = self._calculate_source_boost(item)
+        composite_score *= source_boost
         
-        # Calculate composite score
-        composite_score = (
-            relevance_score * self.relevance_weight +
-            credibility_score * self.credibility_weight +
-            recency_score * self.recency_weight +
-            engagement_score * self.engagement_weight
-        ) * source_boost
+        # For entity searches, if relevance is very low, significantly reduce overall score
+        if entity_type and relevance_score < 0.3:
+            composite_score *= 0.3  # Heavily penalize likely unrelated content
         
         return {
             'relevance': round(relevance_score, 3),
@@ -297,3 +333,21 @@ class ContentScorer:
         composite = score_data.get('composite', 0)
         
         return f"Score: {composite:.2f} - {', '.join(explanations)}"
+    
+    def _detect_entity_type(self, item: Dict[str, Any]) -> Optional[str]:
+        """Detect if the content is about a known entity type."""
+        query = item.get('metadata', {}).get('search_query', '').lower()
+        title = item.get('title', '').lower()
+        content = item.get('content', '').lower()
+        
+        for entity_type, entities in self.entity_types.items():
+            # Check if query matches any entity
+            if any(entity in query for entity in entities):
+                return entity_type
+            
+            # Check if title or content has strong entity presence
+            entity_mentions = sum(1 for entity in entities if entity in title or entity in content)
+            if entity_mentions >= 2:  # Multiple mentions indicate strong relevance
+                return entity_type
+        
+        return None
