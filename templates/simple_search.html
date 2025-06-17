@@ -1577,12 +1577,6 @@
                 margin-top: 0 !important;
             }
             
-            .featured-article-tile {
-                grid-column: 1 !important;
-                grid-row: 4 !important;
-                margin-top: 0 !important;
-            }
-            
             /* Make the multimedia row stack vertically on mobile */
             div[style*="grid-template-columns: 1fr 1fr"] {
                 grid-template-columns: 1fr !important;
@@ -1601,40 +1595,6 @@
         /* Ensure video tile takes full width on mobile */
         .video-tile {
             width: 100% !important;
-        }
-
-        /* Featured article tile for video row */
-        .featured-article-tile {
-            background: #fff;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            position: relative;
-            z-index: 2;
-            min-height: 320px;
-        }
-
-        .featured-article-tile:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-            z-index: 3;
-        }
-
-        .featured-article-tile::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .featured-article-tile:hover::before {
-            opacity: 1;
         }
 
         /* Add visual cues for clickable image functionality */
@@ -1662,29 +1622,7 @@
             transform: translateY(0);
         }
 
-        .featured-article-tile::after {
-            /* content: '🖼️ Click to view article image'; */
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: 500;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.3s ease;
-            z-index: 10;
-            white-space: nowrap;
-            pointer-events: none;
-        }
 
-        .featured-article-tile:hover::after {
-            opacity: 1;
-            transform: translateY(0);
-        }
 
         /* Image Modal - Match Score and Video Modal Style */
         .image-modal {
@@ -2336,11 +2274,7 @@
                 sortedItems.forEach((item, index) => {
                     console.log(`Processing item ${index + 1}:`, item);
                     
-                    // Skip the first article (index 0) as it's featured in the multimedia row
-                    if (index === 0) {
-                        console.log(`Skipping item ${index + 1} as it's featured`);
-                        return;
-                    }
+                    // The first article (index 0) will be rendered as featured
                     
                     try {
                         const card = document.createElement('div');
@@ -2399,15 +2333,14 @@
                         
                         // Determine card size and score class
                         let cardSize = 'size-small';
-                        let scoreClass = 'low-score';
+                        let scoreClass = compositeScore > 75 ? 'high-score' : compositeScore > 50 ? 'medium-score' : 'low-score';
                         
-                        if (compositeScore > 75) {
-                            cardSize = index < 2 ? 'size-featured' : 'size-large';
-                            scoreClass = 'high-score';
-                        } else if (compositeScore > 50) {
-                            cardSize = content.length > 200 ? 'size-medium' : 'size-small';
-                            scoreClass = 'medium-score';
-                        } else if (content.length > 300) {
+                        // First article is always featured, others sized by score and content
+                        if (index === 0) {
+                            cardSize = 'size-featured';
+                        } else if (compositeScore > 75) {
+                            cardSize = 'size-large';
+                        } else if (compositeScore > 50 || content.length > 200) {
                             cardSize = 'size-medium';
                         }
                         
@@ -3130,62 +3063,70 @@
                     </div>
                 `;
 
-                // Create featured article tile (bottom left)
-                const featuredArticle = document.createElement('div');
-                featuredArticle.className = 'featured-article-tile';
-                featuredArticle.id = 'featuredArticleTile';
-                featuredArticle.style.cssText = `
-                    grid-column: 1;
-                    grid-row: 2;
-                    min-height: 180px;
-                    height: auto;
-                    max-height: none;
-                    overflow: visible;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: flex-start;
-                `;
-                featuredArticle.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 12px; color: #6b7280; justify-content: center; height: 280px;">
-                        <div style="width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                        <span>Loading featured article...</span>
-                    </div>
-                `;
-
-                // Create video tile (bottom right)
-                const videoTile = document.createElement('div');
-                videoTile.className = 'video-tile';
-                videoTile.style.cssText = `
-                    grid-column: 2;
-                    grid-row: 2;
-                    min-height: 180px;
-                    height: auto;
-                `;
-
-                // Create bottom row container for equal-width tiles
-                const bottomRowContainer = document.createElement('div');
-                bottomRowContainer.style.cssText = `
+                // Create media row container for Reddit and Video
+                const mediaRowContainer = document.createElement('div');
+                mediaRowContainer.style.cssText = `
                     grid-column: 1 / 3;
                     grid-row: 2;
                     display: grid;
                     grid-template-columns: 1fr 1fr;
                     gap: 20px;
-                    min-height: 180px;
+                    min-height: 400px;
                     height: auto;
                 `;
 
-                // Reset featured article and video tile to fit in bottom container
-                featuredArticle.style.cssText = `
-                    min-height: 180px;
+                // Create Reddit summary tile
+                const redditTile = document.createElement('div');
+                redditTile.className = 'reddit-tile';
+                redditTile.style.cssText = `
+                    min-height: 400px;
                     height: auto;
-                    overflow: visible;
+                    background: linear-gradient(135deg, rgba(255, 69, 0, 0.03) 0%, rgba(255, 69, 0, 0.05) 50%, rgba(255, 69, 0, 0.07) 100%),
+                                linear-gradient(135deg, rgba(245, 245, 244, 0.9) 0%, rgba(231, 229, 228, 0.85) 50%, rgba(220, 216, 214, 0.8) 100%);
+                    color: #374151;
+                    border-radius: 16px;
+                    padding: 20px;
+                    box-shadow: 0 8px 32px rgba(255, 69, 0, 0.05);
+                    display: flex;
+                    flex-direction: column;
+                    border: 2px solid rgba(255, 69, 0, 0.1);
+                    backdrop-filter: blur(8px);
                 `;
+                // Create the header with logo that will remain constant
+                const redditHeader = document.createElement('div');
+                redditHeader.style.cssText = 'display: flex; align-items: center; gap: 10px; margin-bottom: 16px;';
+                redditHeader.innerHTML = `
+                    <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: #FF4500;">
+                        <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/>
+                    </svg>
+                    <h3 style="margin: 0; font-size: 1.2rem; color: #1f2937;">Reddit be like</h3>
+                `;
+                
+                // Create the content container that will be updated
+                const redditContent = document.createElement('div');
+                redditContent.className = 'reddit-content';
+                redditContent.style.cssText = 'flex: 1; overflow-y: auto;';
+                redditContent.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280;">
+                        <div style="text-align: center;">
+                            <div style="width: 20px; height: 20px; border: 2px solid rgba(120, 113, 108, 0.2); border-top: 2px solid #6b7280; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
+                            <span>Fetching Reddit discussions...</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Clear the tile and add both components
+                redditTile.innerHTML = '';
+                redditTile.appendChild(redditHeader);
+                redditTile.appendChild(redditContent);
 
+                // Create video tile
+                const videoTile = document.createElement('div');
+                videoTile.className = 'video-tile';
                 videoTile.style.cssText = `
-                    min-height: 180px;
+                    min-height: 400px;
                     height: auto;
                 `;
-
                 videoTile.innerHTML = `
                     <div class="video-header">
                         <h3>
@@ -3203,14 +3144,14 @@
                     </div>
                 `;
 
-                // Add tiles to bottom row container
-                bottomRowContainer.appendChild(featuredArticle);
-                bottomRowContainer.appendChild(videoTile);
+                // Add Reddit and Video tiles to media row
+                mediaRowContainer.appendChild(redditTile);
+                mediaRowContainer.appendChild(videoTile);
 
-                // Assemble the summary section (custom grid layout: 30%-70% top, 50%-50% bottom)
+                // Assemble the summary section
                 summarySection.appendChild(definitionTile);
                 summarySection.appendChild(intelligenceTile);
-                summarySection.appendChild(bottomRowContainer);
+                summarySection.appendChild(mediaRowContainer);
 
                 // Add to summary container
                 summaryContainer.appendChild(summarySection);
@@ -3218,17 +3159,17 @@
                 // Fetch YouTube videos
                 fetchYouTubeVideos(query, videoTile);
 
-                // Find the highest scoring article to feature
-                const sortedForFeatured = [...articles].sort((a, b) => {
+                // Fetch Reddit content
+                fetchRedditContent(query, redditTile);
+
+                // Sort articles by score
+                articles.sort((a, b) => {
                     const scoreA = calculateCompositeScore(a);
                     const scoreB = calculateCompositeScore(b);
                     return scoreB - scoreA;
                 });
 
-                // Populate featured article tile with top article (simplified 2-column layout)
-                if (sortedForFeatured.length > 0) {
-                    populateFeaturedArticle(sortedForFeatured[0], 0, 'featuredArticleTile');
-                }
+                // The highest scoring article will be rendered as featured in the regular article rendering logic
 
                 // Prepare article data for summarization
                 const articleData = articles.map(article => ({
@@ -4204,106 +4145,15 @@
         async function generateArticleSummaries(articles) {
             console.log('Starting LLM summary generation for', articles.length, 'articles');
             
-            // Process the first featured article (highest scoring) for the simplified 2-column layout
-            if (articles.length > 0) {
-                await generateFeaturedArticleSummary(articles[0], 'featuredArticleTile');
-            }
-            
-            // Process remaining articles in batches for better performance (skip first 1)
-            const remainingArticles = articles.slice(1);
+            // Process all articles in batches
             const batchSize = 3;
-            for (let i = 0; i < remainingArticles.length; i += batchSize) {
-                const batch = remainingArticles.slice(i, i + batchSize);
-                await processBatch(batch, i + 1); // +1 because we skipped the first article
+            for (let i = 0; i < articles.length; i += batchSize) {
+                const batch = articles.slice(i, i + batchSize);
+                await processBatch(batch, i);
                 
                 // Small delay between batches to prevent overwhelming the server
-                if (i + batchSize < remainingArticles.length) {
+                if (i + batchSize < articles.length) {
                     await new Promise(resolve => setTimeout(resolve, 100));
-                }
-            }
-        }
-
-        async function generateFeaturedArticleSummary(article, tileId) {
-            try {
-                // Find the featured article tile
-                const featuredTile = document.getElementById(tileId);
-                if (!featuredTile) {
-                    console.log('Featured tile not found');
-                    return;
-                }
-                // Set dynamic sizing for summary container
-                const summaryContainer = featuredTile.querySelector('.llm-summary-container');
-                if (summaryContainer) {
-                    summaryContainer.style.maxHeight = 'none';
-                    summaryContainer.style.overflow = 'visible';
-                }
-                // Try to load and apply the best background image
-                if (article.url && article.title) {
-                    await loadArticleBackgroundImage(featuredTile, article.url, article.title);
-                }
-                // Prepare article data
-                const articleData = {
-                    title: article.title || 'Untitled',
-                    content: article.content || 'No content available',
-                    source: article.source || 'Unknown'
-                };
-                console.log(`Generating summary for featured article: ${articleData.title.substring(0, 50)}...`);
-                // Call the API to generate summary
-                const response = await fetch('/api/article-summary', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        article: articleData,
-                        max_words: 350  // Allow longer, more engaging summaries
-                    })
-                });
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                const data = await response.json();
-                // Always display the full summary without truncation, allow for multi-sentence
-                let finalSummary = data.summary || 'Summary not available';
-                // Update the summary content
-                const summaryContent = featuredTile.querySelector('.llm-summary-content');
-                if (summaryContent) {
-                    summaryContent.innerHTML = `
-                        <span style="font-style: normal; color: #000; line-height: 1.6; font-size: 16px;">${finalSummary}</span>
-                    `;
-                }
-                // Update status indicators
-                const loadingElement = featuredTile.querySelector('.llm-loading');
-                const readyElement = featuredTile.querySelector('.llm-ready');
-                if (loadingElement) loadingElement.style.display = 'none';
-                if (readyElement) {
-                    readyElement.style.display = 'inline';
-                    readyElement.style.color = data.llm_used ? '#28a745' : '#6c757d';
-                    readyElement.title = data.llm_used ? 'AI-powered summary' : 'Smart analysis summary';
-                }
-                console.log(`Summary generated for featured article: ${data.summary ? data.summary.substring(0, 50) : 'None'}...`);
-            } catch (error) {
-                console.error('Failed to generate summary for featured article:', error);
-                // Find the featured tile and show error state
-                const featuredTile = document.getElementById(tileId);
-                if (featuredTile) {
-                    const loadingElement = featuredTile.querySelector('.llm-loading');
-                    const readyElement = featuredTile.querySelector('.llm-ready');
-                    const summaryContent = featuredTile.querySelector('.llm-summary-content');
-                    if (loadingElement) loadingElement.style.display = 'none';
-                    if (readyElement) {
-                        readyElement.style.display = 'inline';
-                        readyElement.style.color = '#dc3545';
-                        readyElement.innerHTML = '!';
-                        readyElement.title = 'Summary generation failed';
-                    }
-                    if (summaryContent) {
-                        // Create enhanced fallback based on title
-                        const enhancedSummary = createEnhancedSummary(article.title, article.source, 200);
-                        summaryContent.innerHTML = `
-                            <span style="color: #000; line-height: 1.4;">${enhancedSummary}</span>
-                        `;
-                    }
                 }
             }
         }
@@ -4833,206 +4683,206 @@
         });
 
         // Function to populate the featured article tile
-        function populateFeaturedArticle(article, index, tileId) {
-            const featuredTile = document.getElementById(tileId);
-            if (!featuredTile) return;
+        // function populateFeaturedArticle(article, index, tileId) {
+        //     const featuredTile = document.getElementById(tileId);
+        //     if (!featuredTile) return;
 
-            try {
-                const title = (article.title || 'Untitled').toString();
-                const source = (article.source || 'Unknown Source').toString();
-                const content = (article.content || 'No content available').toString();
+        //     try {
+        //         const title = (article.title || 'Untitled').toString();
+        //         const source = (article.source || 'Unknown Source').toString();
+        //         const content = (article.content || 'No content available').toString();
                 
-                // Extract scores for featured article
-                let relevanceScore = 0;
-                let credibilityScore = 0;
-                let sentimentScore = 0;
-                let popularityScore = 0;
+        //         // Extract scores for featured article
+        //         let relevanceScore = 0;
+        //         let credibilityScore = 0;
+        //         let sentimentScore = 0;
+        //         let popularityScore = 0;
                 
-                // Handle relevance score
-                if (article.relevance_score !== undefined && article.relevance_score !== null) {
-                    if (typeof article.relevance_score === 'object' && article.relevance_score.score !== undefined) {
-                        relevanceScore = parseFloat(article.relevance_score.score) || 0;
-                    } else {
-                        relevanceScore = parseFloat(article.relevance_score) || 0;
-                    }
-                }
+        //         // Handle relevance score
+        //         if (article.relevance_score !== undefined && article.relevance_score !== null) {
+        //             if (typeof article.relevance_score === 'object' && article.relevance_score.score !== undefined) {
+        //                 relevanceScore = parseFloat(article.relevance_score.score) || 0;
+        //             } else {
+        //                 relevanceScore = parseFloat(article.relevance_score) || 0;
+        //             }
+        //         }
                 
-                // Handle credibility score
-                if (article.credibility_score !== undefined && article.credibility_score !== null) {
-                    credibilityScore = parseFloat(article.credibility_score) || 0;
-                }
+        //         // Handle credibility score
+        //         if (article.credibility_score !== undefined && article.credibility_score !== null) {
+        //             credibilityScore = parseFloat(article.credibility_score) || 0;
+        //         }
                 
-                // Handle sentiment score with polarity support
-                if (article.sentiment_score !== undefined && article.sentiment_score !== null) {
-                    if (typeof article.sentiment_score === 'object') {
-                        if (article.sentiment_score.polarity !== undefined) {
-                            sentimentScore = parseFloat(article.sentiment_score.polarity) || 0;
-                        } else if (article.sentiment_score.score !== undefined) {
-                            sentimentScore = parseFloat(article.sentiment_score.score) || 0;
-                        }
-                    } else {
-                        sentimentScore = parseFloat(article.sentiment_score) || 0;
-                    }
-                } else {
-                    sentimentScore = (Math.random() - 0.5) * 2;
-                }
+        //         // Handle sentiment score with polarity support
+        //         if (article.sentiment_score !== undefined && article.sentiment_score !== null) {
+        //             if (typeof article.sentiment_score === 'object') {
+        //                 if (article.sentiment_score.polarity !== undefined) {
+        //                     sentimentScore = parseFloat(article.sentiment_score.polarity) || 0;
+        //                 } else if (article.sentiment_score.score !== undefined) {
+        //                     sentimentScore = parseFloat(article.sentiment_score.score) || 0;
+        //                 }
+        //             } else {
+        //                 sentimentScore = parseFloat(article.sentiment_score) || 0;
+        //             }
+        //         } else {
+        //             sentimentScore = (Math.random() - 0.5) * 2;
+        //         }
                 
-                // Handle popularity score
-                if (article.popularity !== undefined && article.popularity !== null) {
-                    popularityScore = parseInt(article.popularity) || 0;
-                } else {
-                    popularityScore = Math.floor(Math.random() * 500) + Math.floor(credibilityScore * 5);
-                }
+        //         // Handle popularity score
+        //         if (article.popularity !== undefined && article.popularity !== null) {
+        //             popularityScore = parseInt(article.popularity) || 0;
+        //         } else {
+        //             popularityScore = Math.floor(Math.random() * 500) + Math.floor(credibilityScore * 5);
+        //         }
                 
-                article.popularity = popularityScore;
-                const compositeScore = calculateCompositeScore(article);
-                const scoreClass = compositeScore > 75 ? 'high-score' : compositeScore > 50 ? 'medium-score' : 'low-score';
+        //         article.popularity = popularityScore;
+        //         const compositeScore = calculateCompositeScore(article);
+        //         const scoreClass = compositeScore > 75 ? 'high-score' : compositeScore > 50 ? 'medium-score' : 'low-score';
                 
-                // Extract article date
-                const articleDate = extractArticleDate(article);
+        //         // Extract article date
+        //         const articleDate = extractArticleDate(article);
                 
-                // Create tooltip content for featured article
-                const createTooltipContent = (relevance, credibility, sentiment, composite, popularity, sourceInfo, url, articleDate) => {
-                    let displaySource = sourceInfo;
-                    if (url) {
-                        try {
-                            const urlObj = new URL(url);
-                            const hostname = urlObj.hostname.replace('www.', '');
-                            if (hostname.includes('cnn.com')) displaySource = 'CNN';
-                            else if (hostname.includes('bbc.com') || hostname.includes('bbc.co.uk')) displaySource = 'BBC';
-                            else if (hostname.includes('espn.com')) displaySource = 'ESPN';
-                            else if (hostname.includes('reuters.com')) displaySource = 'Reuters';
-                            else if (hostname.includes('ap.org') || hostname.includes('apnews.com')) displaySource = 'Associated Press';
-                            else if (hostname.includes('npr.org')) displaySource = 'NPR';
-                            else if (hostname.includes('washingtonpost.com')) displaySource = 'Washington Post';
-                            else if (hostname.includes('nytimes.com')) displaySource = 'New York Times';
-                            else if (hostname.includes('wsj.com')) displaySource = 'Wall Street Journal';
-                            else if (hostname.includes('forbes.com')) displaySource = 'Forbes';
-                            else if (hostname.includes('bloomberg.com')) displaySource = 'Bloomberg';
-                            else if (hostname.includes('techcrunch.com')) displaySource = 'TechCrunch';
-                            else if (hostname.includes('verge.com')) displaySource = 'The Verge';
-                            else if (hostname.includes('engadget.com')) displaySource = 'Engadget';
-                            else if (hostname.includes('wired.com')) displaySource = 'Wired';
-                            else if (hostname.includes('ars-technica.com')) displaySource = 'Ars Technica';
-                            else if (hostname.includes('reddit.com')) displaySource = 'Reddit';
-                            else if (hostname.includes('youtube.com')) displaySource = 'YouTube';
-                            else if (hostname.includes('medium.com')) displaySource = 'Medium';
-                            else if (sourceInfo === 'google_news') displaySource = hostname.charAt(0).toUpperCase() + hostname.slice(1);
-                            else displaySource = hostname;
-                        } catch (e) {
-                            displaySource = sourceInfo;
-                        }
-                    }
+        //         // Create tooltip content for featured article
+        //         const createTooltipContent = (relevance, credibility, sentiment, composite, popularity, sourceInfo, url, articleDate) => {
+        //             let displaySource = sourceInfo;
+        //             if (url) {
+        //                 try {
+        //                     const urlObj = new URL(url);
+        //                     const hostname = urlObj.hostname.replace('www.', '');
+        //                     if (hostname.includes('cnn.com')) displaySource = 'CNN';
+        //                     else if (hostname.includes('bbc.com') || hostname.includes('bbc.co.uk')) displaySource = 'BBC';
+        //                     else if (hostname.includes('espn.com')) displaySource = 'ESPN';
+        //                     else if (hostname.includes('reuters.com')) displaySource = 'Reuters';
+        //                     else if (hostname.includes('ap.org') || hostname.includes('apnews.com')) displaySource = 'Associated Press';
+        //                     else if (hostname.includes('npr.org')) displaySource = 'NPR';
+        //                     else if (hostname.includes('washingtonpost.com')) displaySource = 'Washington Post';
+        //                     else if (hostname.includes('nytimes.com')) displaySource = 'New York Times';
+        //                     else if (hostname.includes('wsj.com')) displaySource = 'Wall Street Journal';
+        //                     else if (hostname.includes('forbes.com')) displaySource = 'Forbes';
+        //                     else if (hostname.includes('bloomberg.com')) displaySource = 'Bloomberg';
+        //                     else if (hostname.includes('techcrunch.com')) displaySource = 'TechCrunch';
+        //                     else if (hostname.includes('verge.com')) displaySource = 'The Verge';
+        //                     else if (hostname.includes('engadget.com')) displaySource = 'Engadget';
+        //                     else if (hostname.includes('wired.com')) displaySource = 'Wired';
+        //                     else if (hostname.includes('ars-technica.com')) displaySource = 'Ars Technica';
+        //                     else if (hostname.includes('reddit.com')) displaySource = 'Reddit';
+        //                     else if (hostname.includes('youtube.com')) displaySource = 'YouTube';
+        //                     else if (hostname.includes('medium.com')) displaySource = 'Medium';
+        //                     else if (sourceInfo === 'google_news') displaySource = hostname.charAt(0).toUpperCase() + hostname.slice(1);
+        //                     else displaySource = hostname;
+        //                 } catch (e) {
+        //                     displaySource = sourceInfo;
+        //                 }
+        //             }
 
-                    return `
-                        <div class="tooltip-content" data-tooltip>
-                            <div style="font-weight: bold; margin-bottom: 12px; color: #fff; text-align: center; border-bottom: 2px solid rgba(255,255,255,0.4); padding-bottom: 8px; font-size: 0.9rem;">
-                                Stats
-                            </div>
+        //             return `
+        //                 <div class="tooltip-content" data-tooltip>
+        //                     <div style="font-weight: bold; margin-bottom: 12px; color: #fff; text-align: center; border-bottom: 2px solid rgba(255,255,255,0.4); padding-bottom: 8px; font-size: 0.9rem;">
+        //                         Stats
+        //                     </div>
                             
-                            <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; padding: 4px 0;">
-                                <span style="font-weight: 600; color: #e5e5e5;">Overall Score:</span> 
-                                <span style="font-weight: bold; color: #fff; font-size: 1.1rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px;">${composite.toFixed(0)}/100</span>
-                            </div>
+        //                     <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; padding: 4px 0;">
+        //                         <span style="font-weight: 600; color: #e5e5e5;">Overall Score:</span> 
+        //                         <span style="font-weight: bold; color: #fff; font-size: 1.1rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px;">${composite.toFixed(0)}/100</span>
+        //                     </div>
                             
-                            <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
-                                <span style="font-weight: 500; color: #d1d1d1;">Relevance:</span> 
-                                <span style="color: #fff; font-weight: 600;">${relevance.toFixed(1)}</span>
-                            </div>
+        //                     <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
+        //                         <span style="font-weight: 500; color: #d1d1d1;">Relevance:</span> 
+        //                         <span style="color: #fff; font-weight: 600;">${relevance.toFixed(1)}</span>
+        //                     </div>
                             
-                            <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
-                                <span style="font-weight: 500; color: #d1d1d1;">Credibility:</span> 
-                                <span style="color: #fff; font-weight: 600;">${credibility.toFixed(0)}/100</span>
-                            </div>
+        //                     <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
+        //                         <span style="font-weight: 500; color: #d1d1d1;">Credibility:</span> 
+        //                         <span style="color: #fff; font-weight: 600;">${credibility.toFixed(0)}/100</span>
+        //                     </div>
                             
-                            <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
-                                <span style="font-weight: 500; color: #d1d1d1;">Sentiment:</span> 
-                                <span style="color: #fff; font-weight: 600;">${sentiment.toFixed(1)}</span>
-                            </div>
+        //                     <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
+        //                         <span style="font-weight: 500; color: #d1d1d1;">Sentiment:</span> 
+        //                         <span style="color: #fff; font-weight: 600;">${sentiment.toFixed(1)}</span>
+        //                     </div>
                             
-                            <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
-                                <span style="font-weight: 500; color: #d1d1d1;">Popularity:</span> 
-                                <span style="color: #fff; font-weight: 600;">${popularity} views</span>
-                            </div>
+        //                     <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; padding: 2px 0;">
+        //                         <span style="font-weight: 500; color: #d1d1d1;">Popularity:</span> 
+        //                         <span style="color: #fff; font-weight: 600;">${popularity} views</span>
+        //                     </div>
                             
-                            <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.2); border-bottom: 1px solid rgba(255,255,255,0.2);">
-                                <span style="font-weight: 500; color: #d1d1d1;">Published:</span> 
-                                <span style="color: #8b5cf6; font-weight: 600; background: rgba(139, 92, 246, 0.2); padding: 2px 6px; border-radius: 4px;">${getRelativeTime(articleDate)}</span>
-                            </div>
+        //                     <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.2); border-bottom: 1px solid rgba(255,255,255,0.2);">
+        //                         <span style="font-weight: 500; color: #d1d1d1;">Published:</span> 
+        //                         <span style="color: #8b5cf6; font-weight: 600; background: rgba(139, 92, 246, 0.2); padding: 2px 6px; border-radius: 4px;">${getRelativeTime(articleDate)}</span>
+        //                     </div>
                             
-                            <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px; font-size: 0.8rem; color: rgba(255,255,255,0.9); text-align: center; background: rgba(255,255,255,0.05); margin: 0 -16px -16px -16px; padding: 8px 16px; border-radius: 0 0 9px 9px;">
-                                <strong>Source:</strong> ${displaySource}
-                            </div>
-                        </div>
-                    `;
-                };
+        //                     <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px; font-size: 0.8rem; color: rgba(255,255,255,0.9); text-align: center; background: rgba(255,255,255,0.05); margin: 0 -16px -16px -16px; padding: 8px 16px; border-radius: 0 0 9px 9px;">
+        //                         <strong>Source:</strong> ${displaySource}
+        //                     </div>
+        //                 </div>
+        //             `;
+        //         };
                 
-                featuredTile.innerHTML = `
-                    <button class="score-badge ${scoreClass}" 
-                        data-score-badge 
-                        data-overall="${compositeScore.toFixed(0)}"
-                        data-relevance="${relevanceScore.toFixed(1)}"
-                        data-credibility="${credibilityScore.toFixed(0)}"
-                        data-sentiment="${sentimentScore.toFixed(1)}"
-                        data-popularity="${article.popularity}"
-                        data-published="${getRelativeTime(articleDate)}"
-                        data-source="${source}">
-                        ${compositeScore.toFixed(0)}
-                    </button>
-                    <div class="time-badge">${getExactDateTime(article)}</div>
-                    <div class="view-count-badge">
-                        <i class="fas fa-eye"></i>
-                        ${article.popularity || Math.floor(Math.random() * 1000) + 100} views
-                    </div>
-                    <div style="margin-bottom: 12px;">
-                        <h3 class="result-title" style="margin: 40px 0 8px 0; cursor: pointer; transition: color 0.2s ease;">${title}</h3>
-                        <div class="result-meta">
-                            <span style="color: #000; font-weight: 500;">${source}</span>
-                            <span style="color: #000; font-weight: 600; margin-left: 12px;">Featured</span>
-                        </div>
-                    </div>
+        //         featuredTile.innerHTML = `
+        //             <button class="score-badge ${scoreClass}" 
+        //                 data-score-badge 
+        //                 data-overall="${compositeScore.toFixed(0)}"
+        //                 data-relevance="${relevanceScore.toFixed(1)}"
+        //                 data-credibility="${credibilityScore.toFixed(0)}"
+        //                 data-sentiment="${sentimentScore.toFixed(1)}"
+        //                 data-popularity="${article.popularity}"
+        //                 data-published="${getRelativeTime(articleDate)}"
+        //                 data-source="${source}">
+        //                 ${compositeScore.toFixed(0)}
+        //             </button>
+        //             <div class="time-badge">${getExactDateTime(article)}</div>
+        //             <div class="view-count-badge">
+        //                 <i class="fas fa-eye"></i>
+        //                 ${article.popularity || Math.floor(Math.random() * 1000) + 100} views
+        //             </div>
+        //             <div style="margin-bottom: 12px;">
+        //                 <h3 class="result-title" style="margin: 40px 0 8px 0; cursor: pointer; transition: color 0.2s ease;">${title}</h3>
+        //                 <div class="result-meta">
+        //                     <span style="color: #000; font-weight: 500;">${source}</span>
+        //                     <span style="color: #000; font-weight: 600; margin-left: 12px;">Featured</span>
+        //                 </div>
+        //             </div>
                     
-                    <!-- LLM Summary Section -->
-                    <div class="llm-summary-container" style="margin-bottom: 0px; min-height: 50px;">
-                        <div class="llm-summary-header" style="display: flex; align-items: center; margin-bottom: 0px;">
+        //             <!-- LLM Summary Section -->
+        //             <div class="llm-summary-container" style="margin-bottom: 0px; min-height: 50px;">
+        //                 <div class="llm-summary-header" style="display: flex; align-items: center; margin-bottom: 0px;">
                             
-                            <div class="llm-status" style="margin-left: auto; font-size: 12px; color: #6c757d;">
-                                <span class="llm-loading" style="display: none;">
-                                    <span style="display: inline-block; width: 12px; height: 12px; border: 2px solid #f3f3f3; border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 6px;"></span>
-                                    Generating...
-                                </span>
-                                <span class="llm-ready" style="color: #28a745;">●</span>
-                            </div>
-                        </div>
-                        <div class="llm-summary-content" style="font-size: 14px; line-height: 1.6; color: #000; min-height: 40px; margin-top: 8px;">
-                            Generating smart summary...
-                        </div>
-                    </div>
+        //                     <div class="llm-status" style="margin-left: auto; font-size: 12px; color: #6c757d;">
+        //                         <span class="llm-loading" style="display: none;">
+        //                             <span style="display: inline-block; width: 12px; height: 12px; border: 2px solid #f3f3f3; border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 6px;"></span>
+        //                             Generating...
+        //                         </span>
+        //                         <span class="llm-ready" style="color: #28a745;">●</span>
+        //                     </div>
+        //                 </div>
+        //                 <div class="llm-summary-content" style="font-size: 14px; line-height: 1.6; color: #000; min-height: 40px; margin-top: 8px;">
+        //                     Generating smart summary...
+        //                 </div>
+        //             </div>
                     
                     
-                    ${createTooltipContent(relevanceScore, credibilityScore, sentimentScore, compositeScore, popularityScore, source, article.url || '', articleDate)}
-                `;
+        //             ${createTooltipContent(relevanceScore, credibilityScore, sentimentScore, compositeScore, popularityScore, source, article.url || '', articleDate)}
+        //         `;
                 
-                // Store article data for LLM processing
-                featuredTile.dataset.articleData = JSON.stringify({
-                    title: title,
-                    content: content,
-                    source: source,
-                    url: article.url || '',
-                    index: index
-                });
+        //         // Store article data for LLM processing
+        //         featuredTile.dataset.articleData = JSON.stringify({
+        //             title: title,
+        //             content: content,
+        //             source: source,
+        //             url: article.url || '',
+        //             index: index
+        //         });
                 
-                console.log('Featured article populated:', title.substring(0, 50) + '...');
+        //         console.log('Featured article populated:', title.substring(0, 50) + '...');
                 
-            } catch (error) {
-                console.error('Error populating featured article:', error);
-                featuredTile.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: center; height: 280px; color: #6b7280;">
-                        <span>Error loading featured article</span>
-                    </div>
-                `;
-            }
-        }
+        //     } catch (error) {
+        //         console.error('Error populating featured article:', error);
+        //         featuredTile.innerHTML = `
+        //             <div style="display: flex; align-items: center; justify-content: center; height: 280px; color: #6b7280;">
+        //                 <span>Error loading featured article</span>
+        //             </div>
+        //         `;
+        //     }
+        // }
 
         // YouTube Video Management
         function showAllVideos() {
@@ -5636,6 +5486,68 @@
         }
         
         // The working playNextVideo() function is defined earlier in the file around line 2976
+        
+        // Reddit Content Functions
+        async function fetchRedditContent(query, redditTile) {
+            // Get the content container
+            const redditContent = redditTile.querySelector('.reddit-content');
+            if (!redditContent) {
+                console.error('Reddit content container not found');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/reddit-content', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch Reddit content');
+                }
+
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    // Sort posts by score
+                    const sortedPosts = data.sort((a, b) => 
+                        (b.metadata?.score || 0) - (a.metadata?.score || 0)
+                    );
+
+                    // Display top posts
+                    redditContent.innerHTML = `
+                        ${sortedPosts.slice(0, 3).map(post => `
+                            <div class="reddit-post" style="margin-bottom: 16px; padding: 12px; background: linear-gradient(135deg, rgba(255, 69, 0, 0.02) 0%, rgba(255, 69, 0, 0.03) 100%), rgba(255,255,255,0.5); border-radius: 8px; border: 1px solid rgba(255, 69, 0, 0.1); transition: all 0.2s ease;">
+                                <a href="${post.url}" target="_blank" style="color: #1f2937; text-decoration: none; font-weight: 600; display: block; margin-bottom: 8px; transition: color 0.2s ease;">
+                                    ${post.title}
+                                </a>
+                                <div style="display: flex; gap: 16px; font-size: 0.9rem; color: #6b7280;">
+                                    <span style="color: rgba(255, 69, 0, 0.8);">r/${post.metadata.subreddit}</span>
+                                    <span>${formatNumber(post.metadata.score)} points</span>
+                                    <span>${formatNumber(post.metadata.num_comments)} comments</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    `;
+                } else {
+                    redditContent.innerHTML = `
+                        <div style="flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; color: #6b7280;">
+                            No relevant Reddit discussions found
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error fetching Reddit content:', error);
+                redditContent.innerHTML = `
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; color: #6b7280;">
+                        Error loading Reddit content
+                    </div>
+                `;
+            }
+        }
         
         // Image Modal Functions
         function showImageModal(imageUrl, query, attribution = null) {
@@ -6325,8 +6237,8 @@
                                     </svg>
                                 </a>
                             </div>
-                        </div>
-                    `;
+                    </div>
+                `;
                 } else {
                     console.error('Article extraction failed:', result.error);
                     displayArticleError(articleData, result.error);
@@ -6391,8 +6303,8 @@
                         <strong>Why this happened:</strong> Some websites block automated content extraction or have complex layouts. 
                         Opening the original article will give you the full, formatted content.
                     </div>
-                </div>
-            `;
+                    </div>
+                `;
         }
 
         // Function to search for related articles

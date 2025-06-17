@@ -21,6 +21,7 @@ import random
 import requests
 from urllib.parse import quote_plus
 import re
+from app.scraper.social.reddit import RedditScraper
 
 # Load environment variables from .env file
 try:
@@ -1574,6 +1575,35 @@ def debug_google_news():
     except Exception as e:
         print(f"Debug endpoint error: {e}")
         return jsonify({'error': f'Debug failed: {str(e)}'}), 500
+
+@app.route('/api/reddit-content', methods=['POST'])
+def api_reddit_content():
+    try:
+        data = request.get_json()
+        query = data.get('query', '')
+        config = {
+            'reddit': {
+                'max_posts': 5,
+                'min_score': 10,
+                'time_filter': 'week',
+                'sort_by': 'relevance'
+            },
+            'cache': {
+                'enabled': False
+            }
+        }
+        scraper = RedditScraper(config)
+        def run_scraper():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(scraper.scrape(query))
+            finally:
+                loop.close()
+        results = run_scraper()
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 

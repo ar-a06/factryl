@@ -15,7 +15,7 @@ import html
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
 
-from .plugin_loader import BaseScraper, rate_limited
+from ..plugin_loader import BaseScraper, rate_limited
 
 class RedditScraper(BaseScraper):
     """Reddit scraper implementation using RSS feeds."""
