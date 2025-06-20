@@ -21,7 +21,7 @@ import random
 import requests
 from urllib.parse import quote_plus
 import re
-from app.scraper.social.reddit import RedditScraper
+from app.scraper.communities.reddit import RedditScraper
 
 # Load environment variables from .env file
 try:
@@ -34,10 +34,20 @@ try:
     # Load YouTube API key
     youtube_key = os.getenv('YOUTUBE_API_KEY')
     if youtube_key:
-        # print(f"YouTube API key loaded: {youtube_key[:8]}..." + "*" * (len(youtube_key) - 8))
-        print(f"YouTube API key loaded...")
+        print("YouTube API key loaded...")
     else:
         print("WARNING: YouTube API key not found in environment variables")
+        
+    # Load Reddit credentials
+    reddit_client_id = os.getenv('REDDIT_CLIENT_ID')
+    reddit_client_secret = os.getenv('REDDIT_CLIENT_SECRET')
+    reddit_username = os.getenv('REDDIT_USERNAME')
+    reddit_password = os.getenv('REDDIT_PASSWORD')
+    
+    if reddit_client_id and reddit_client_secret:
+        print("Reddit API credentials loaded...")
+    else:
+        print("WARNING: Reddit API credentials not found in environment variables")
         
 except ImportError:
     print("WARNING: python-dotenv not installed. Install with: pip install python-dotenv")
@@ -1581,29 +1591,44 @@ def api_reddit_content():
     try:
         data = request.get_json()
         query = data.get('query', '')
-        config = {
-            'reddit': {
-                'max_posts': 5,
-                'min_score': 10,
-                'time_filter': 'week',
-                'sort_by': 'relevance'
-            },
-            'cache': {
-                'enabled': False
-            }
-        }
-        scraper = RedditScraper(config)
-        def run_scraper():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                return loop.run_until_complete(scraper.scrape(query))
-            finally:
-                loop.close()
-        results = run_scraper()
-        return jsonify(results)
+        
+        print("\nReddit API Request:")
+        print(f"Search Query: {query}")
+        
+        if not query:
+            print("No search query provided")
+            return jsonify([])
+        
+        # Initialize scraper with the search query
+        scraper = RedditScraper(
+            search_query=query,
+            max_posts=15
+        )
+        
+        print("Fetching Reddit posts...")
+        results = scraper.scrape()
+        
+        print(f"\nFound {len(results)} total posts")
+        
+        if results:
+            # Sort by score and number of comments for better relevance
+            results.sort(
+                key=lambda x: (
+                    x['metadata']['score'],
+                    x['metadata']['num_comments']
+                ),
+                reverse=True
+            )
+            
+            print(f"Returning {len(results)} processed posts")
+            return jsonify(results)
+        else:
+            print("No results found")
+            return jsonify([])
+            
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error in Reddit API: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
