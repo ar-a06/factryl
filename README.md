@@ -4,7 +4,7 @@ Factryl is a comprehensive information aggregation and analysis system that gene
 
 ## Demo
 
-[▶️ Watch Demo Video](static/images/docs/factrylDemo.mp4)
+[Watch Demo Video](static/images/docs/factrylDemo.mp4)
 
 ### Key Features Showcased in Demo:
 1. **Intelligent Search**: Real-time search results with AI analysis
