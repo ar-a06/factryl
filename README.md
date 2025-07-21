@@ -3,7 +3,7 @@
 Factryl is a comprehensive information aggregation and analysis system that generates intelligent search results from multiple data sources with **AI-powered insights** and **real-time YouTube video integration**. The system uses advanced LLM technology, multi-source data aggregation, and intelligent analysis to provide comprehensive search results with detailed analysis, bias detection, and credibility scoring.
 
 ## Demo
-
+https://github.com/user-attachments/assets/7af12eec-9b8b-46fd-a1d2-56135f34b89d
 [Watch Demo Video](static/images/docs/factrylDemo.mp4)
 
 ### Key Features Showcased in Demo:
